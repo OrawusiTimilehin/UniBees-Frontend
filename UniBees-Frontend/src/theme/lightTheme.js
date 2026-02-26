@@ -11,7 +11,7 @@ export const getHiveTheme = (mode) => createTheme({
       main: '#FFC845', 
       contrastText: mode === 'dark' ? '#0A0A0B' : '#0A0A0B' 
     },
-    background: { 
+    background: {  
       default: mode === 'dark' ? '#0A0A0B' : '#F8F9FA', 
       paper: mode === 'dark' ? '#141415' : '#FFFFFF' 
     },
