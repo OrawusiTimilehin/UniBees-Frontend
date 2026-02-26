@@ -6,7 +6,10 @@ import {Routes, Route, Navigate} from 'react-router-dom'
 function App() {
   return (
     <div>
-      <SignUp />
+      <Routes>
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/" element={<Navigate to="/signup"/>} />
+      </Routes>
     </div>
   );
 }
