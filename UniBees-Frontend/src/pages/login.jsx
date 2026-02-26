@@ -12,15 +12,11 @@ import {
 import { ArrowForward as ArrowIcon } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 
-/**
- * UniBees Login Page
- * Simplified twin of the Sign Up page with Username and Password
- */
+
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Asset paths (Ensure these match your src/assets folder)
   const bgPath = "/src/assets/login-bg.jpg";
   const logoPath = "/src/assets/logo.png";
 
@@ -52,8 +48,6 @@ const Login = () => {
             textAlign: 'center',
             bgcolor: (theme) => alpha(theme.palette.background.paper, 0.95),
             backdropFilter: 'blur(10px)',
-            // Matching the "Blue Blur" border from Sign Up
-            border: '3px solid #42a5f5', 
             boxShadow: '0 0 30px rgba(66, 165, 245, 0.3)',
           }}
         >
@@ -73,7 +67,7 @@ const Login = () => {
             onError={(e) => { e.target.style.display = 'none'; }}
           />
           
-          {/* Split Color Branding */}
+    
           <Typography variant="h4" sx={{ mb: 1, fontWeight: 900 }}>
             Uni<span style={{ color: '#FFC845' }}>Bees</span>
           </Typography>
@@ -83,7 +77,6 @@ const Login = () => {
             Enter your details to rejoin the swarm.
           </Typography>
 
-          {/* Form Stack */}
           <Stack spacing={2}>
             <TextField
               fullWidth
@@ -126,7 +119,7 @@ const Login = () => {
             </Button>
           </Stack>
 
-          {/* Navigation to Sign Up */}
+
           <Typography variant="caption" display="block" sx={{ mt: 4, color: 'text.secondary' }}>
             New to the hive? {' '}
             <Link to="/signup" style={{ color: '#FFC845', textDecoration: 'none', fontWeight: 'bold' }}>
