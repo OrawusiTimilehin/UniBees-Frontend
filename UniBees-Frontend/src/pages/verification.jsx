@@ -13,6 +13,31 @@ import {
 import { VerifiedUserOutlined as ShieldIcon } from '@mui/icons-material';
 
 
+const Verification = () => {
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const inputRefs = useRef([]);
+
+  
+  const bgPath = "/src/assets/login-bg.jpg";
+  const logoPath = "/src/assets/logo.png";
+
+  
+  const handleChange = (index, value) => {
+    if (isNaN(value)) return; 
+    const newCode = [...code];
+    newCode[index] = value.substring(value.length - 1);
+    setCode(newCode);
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1].focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1].focus();
+    }
+  };
 
   return (
     <Box 
@@ -33,7 +58,7 @@ import { VerifiedUserOutlined as ShieldIcon } from '@mui/icons-material';
         px: 2,
       }}
     >
-   
+      {/* Background Blur Overlay */}
       <Box 
         sx={{ 
           position: 'absolute', 
