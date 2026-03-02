@@ -182,7 +182,104 @@ const BeesMatch = () => {
   }
 
   return (
-    '"'
+    <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', color: '#1A1A1B', pb: 12 }}>
+      {/* Page Header */}
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+          <GroupsIcon sx={{ color: '#FFC845' }} /> HIVE DISCOVERY
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'rgba(0,0,0,0.4)', fontWeight: 700, letterSpacing: 1 }}>
+          FINDING SWARM MEMBERS NEARBY
+        </Typography>
+      </Box>
+
+      <Container maxWidth="xs">
+        <Fade in={showProfile} timeout={300}>
+          <Box>
+            <DiscoveryCard elevation={0}>
+              <HexagonContainer>
+                <img src={currentProfile.image} alt={currentProfile.name} />
+              </HexagonContainer>
+
+              <Box sx={{ textAlign: 'center', mb: 1 }}>
+                <MatchScore>{currentProfile.match}%</MatchScore>
+                <Typography variant="overline" sx={{ color: '#FFC845', fontWeight: 900, letterSpacing: 2 }}>
+                  POLLEN MATCH
+                </Typography>
+              </Box>
+
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>{currentProfile.name}</Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(0,0,0,0.5)', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                  <LocationOnIcon sx={{ fontSize: 16 }} /> {currentProfile.major}
+                </Typography>
+                
+                <Chip 
+                  label={currentProfile.rank} 
+                  sx={{ 
+                    bgcolor: '#FFC845', 
+                    color: '#0A0A0B', 
+                    fontWeight: 800, 
+                    fontSize: '0.7rem',
+                    borderRadius: '6px',
+                    height: '24px'
+                  }} 
+                />
+              </Box>
+
+              <Divider sx={{ my: 3, opacity: 0.1 }} />
+
+              <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', fontWeight: 800, mb: 1.5, display: 'block', textAlign: 'center' }}>
+                SHARED POLLEN
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                {currentProfile.allInterests.map((interest) => {
+                  const isShared = currentProfile.sharedPollen.includes(interest);
+                  return (
+                    <Chip 
+                      key={interest} 
+                      label={interest} 
+                      size="small"
+                      icon={isShared ? <LocalFloristIcon sx={{ fontSize: '14px !important', color: '#1A1A1B !important' }} /> : undefined}
+                      sx={{ 
+                        bgcolor: isShared ? '#FFC845' : 'transparent', 
+                        color: isShared ? '#1A1A1B' : 'rgba(0,0,0,0.6)', 
+                        border: isShared ? 'none' : '1px solid rgba(0,0,0,0.1)',
+                        fontWeight: 700,
+                        fontSize: '0.75rem'
+                      }} 
+                    />
+                  );
+                })}
+              </Box>
+            </DiscoveryCard>
+          </Box>
+        </Fade>
+
+        {/* Action Controls */}
+        <Box sx={{ 
+          position: 'fixed', 
+          bottom: 32, 
+          left: '50%', 
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: 4,
+          zIndex: 10
+        }}>
+          <Zoom in={!loading}>
+            <ActionFab onClick={handleAction} aria-label="pass">
+              <CloseIcon sx={{ fontSize: 32 }} />
+            </ActionFab>
+          </Zoom>
+          
+          <Zoom in={!loading} style={{ transitionDelay: '100ms' }}>
+            <ActionFab variantType="match" onClick={handleAction} aria-label="like">
+              <FavoriteIcon sx={{ fontSize: 32 }} />
+            </ActionFab>
+          </Zoom>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
