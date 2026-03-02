@@ -33,7 +33,7 @@ import { VerifiedUserOutlined as ShieldIcon } from '@mui/icons-material';
         px: 2,
       }}
     >
-      {/* Background Blur Overlay */}
+   
       <Box 
         sx={{ 
           position: 'absolute', 
