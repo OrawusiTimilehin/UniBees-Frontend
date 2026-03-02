@@ -144,3 +144,46 @@ const MOCK_PROFILES = [
   }
 ];
 
+
+
+const BeesMatch = () => {
+  const [loading, setLoading] = useState(true);
+  const [index, setIndex] = useState(0);
+  const [showProfile, setShowProfile] = useState(true);
+
+  const currentProfile = MOCK_PROFILES[index];
+
+  useEffect(() => {
+    // Initial loading shimmer effect
+    const timer = setTimeout(() => setLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleAction = () => {
+    setShowProfile(false);
+    setTimeout(() => {
+      setIndex((prev) => (prev + 1) % MOCK_PROFILES.length);
+      setShowProfile(true);
+    }, 300);
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', pt: 4 }}>
+        <Container maxWidth="xs">
+          <Skeleton variant="rectangular" height={500} sx={{ borderRadius: '32px', bgcolor: 'rgba(0,0,0,0.03)' }} />
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 4 }}>
+            <Skeleton variant="circular" width={72} height={72} />
+            <Skeleton variant="circular" width={72} height={72} />
+          </Box>
+        </Container>
+      </Box>
+    );
+  }
+
+  return (
+    '"'
+  );
+};
+
+export default BeesMatch;
