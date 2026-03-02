@@ -112,7 +112,7 @@ const AmberSwitch = styled(Switch)(({ theme }) => ({
 
 // --- MAIN COMPONENT ---
 
-const App = () => {
+const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [newInterest, setNewInterest] = useState("");
@@ -377,4 +377,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default Profile;
