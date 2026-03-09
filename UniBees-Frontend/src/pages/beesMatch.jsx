@@ -22,24 +22,29 @@ import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
 
 
 
-// --- STYLED COMPONENTS ---
-
 const hexagonClip = 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)';
+
+// Main Page Wrapper: Flexible container that centers content vertically
+const PageWrapper = styled(Box)({
+  minHeight: 'calc(100vh - 100px)', // Account for top header and general spacing
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingBottom: '120px', // Creates space specifically for the floating navbar
+  overflow: 'hidden',
+});
 
 const HexagonContainer = styled(Box)(({ theme }) => ({
   position: 'relative',
-  width: '240px',
-  height: '240px',
+  width: 'clamp(160px, 35vh, 220px)', 
+  height: 'clamp(160px, 35vh, 220px)',
   margin: '0 auto',
   clipPath: hexagonClip,
   backgroundColor: '#FFC845',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: 'transform 0.3s ease-in-out',
-  '&:hover': {
-    transform: 'scale(1.02)',
-  },
   '&::after': {
     content: '""',
     position: 'absolute',
@@ -57,15 +62,14 @@ const HexagonContainer = styled(Box)(({ theme }) => ({
   }
 }));
 
-const MatchScore = styled(Typography)(({ theme }) => ({
+const MatchScore = styled(Typography)({
   color: '#FFC845',
   fontWeight: 900,
-  fontSize: '2.5rem',
+  fontSize: '2.2rem',
   textAlign: 'center',
-  textShadow: '2px 2px 0px rgba(26, 26, 27, 0.05)',
   lineHeight: 1,
-  marginTop: theme.spacing(2),
-}));
+  marginTop: '16px',
+});
 
 const DiscoveryCard = styled(Paper)(({ theme }) => ({
   backgroundColor: '#FFFFFF',
@@ -74,22 +78,36 @@ const DiscoveryCard = styled(Paper)(({ theme }) => ({
   border: '1px solid rgba(0, 0, 0, 0.05)',
   boxShadow: '0 12px 40px rgba(0, 0, 0, 0.04)',
   position: 'relative',
-  overflow: 'hidden',
+  width: '100%',
+  maxWidth: '420px',
+  margin: '0 auto',
 }));
+
+// Action Bar: Changed from position 'fixed' to 'relative' (part of the flex flow)
+const ActionBar = styled(Box)({
+  display: 'flex',
+  gap: 32,
+  marginTop: '24px', // Space between the card and the buttons
+  zIndex: 10,
+  justifyContent: 'center',
+});
 
 const ActionFab = styled(Fab)(({ variantType }) => ({
   backgroundColor: variantType === 'match' ? '#FFC845' : '#FFFFFF',
   color: variantType === 'match' ? '#1A1A1B' : '#FFC845',
   border: variantType === 'match' ? 'none' : '2px solid #FFC845',
-  width: '72px',
-  height: '72px',
-  boxShadow: variantType === 'match' ? '0 8px 20px rgba(255, 200, 69, 0.4)' : 'none',
+  width: '68px',
+  height: '68px',
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
+  transition: 'transform 0.2s ease',
+  '&:active': {
+    transform: 'scale(0.9)',
+  },
   '&:hover': {
     backgroundColor: variantType === 'match' ? '#e6b43d' : 'rgba(255, 200, 69, 0.05)',
+    boxShadow: variantType === 'match' ? '0 8px 20px rgba(255, 200, 69, 0.4)' : '0 8px 20px rgba(0,0,0,0.1)',
   }
 }));
-
-// --- MOCK DATA ---
 
 const MOCK_PROFILES = [
   {
@@ -111,104 +129,65 @@ const MOCK_PROFILES = [
     image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&h=500&fit=crop",
     sharedPollen: ["Cyber-Security", "Node.js"],
     allInterests: ["Cyber-Security", "Node.js", "Climbing", "Coffee Roasting"]
-  },
-  {
-    id: 3,
-    name: "Sarah Chen",
-    rank: "SCOUT",
-    major: "Bio-Engineering",
-    match: 92,
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&h=500&fit=crop",
-    sharedPollen: ["Biomimicry", "Hive Mind", "Sustainable Tech"],
-    allInterests: ["Biomimicry", "Hive Mind", "Sustainable Tech", "Hiking", "Vinyl"]
-  },
-  {
-    id: 4,
-    name: "Leo Garcia",
-    rank: "LARVA",
-    major: "Digital Philosophy",
-    match: 76,
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=500&h=500&fit=crop",
-    sharedPollen: ["Ethics", "AI Aesthetics"],
-    allInterests: ["Ethics", "AI Aesthetics", "Surfing", "Chess"]
-  },
-  {
-    id: 5,
-    name: "Maya Patel",
-    rank: "SCOUT",
-    major: "Applied Neuroscience",
-    match: 89,
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=500&fit=crop",
-    sharedPollen: ["Cognitive Design", "Neuro-music"],
-    allInterests: ["Cognitive Design", "Neuro-music", "Yoga", "Podcasting"]
   }
 ];
-
-
 
 const BeesMatch = () => {
   const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
   const [showProfile, setShowProfile] = useState(true);
 
-  const currentProfile = MOCK_PROFILES[index];
+  const currentProfile = MOCK_PROFILES[index % MOCK_PROFILES.length];
 
   useEffect(() => {
-    // Initial loading shimmer effect
-    const timer = setTimeout(() => setLoading(false), 2000);
+    const timer = setTimeout(() => setLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
 
   const handleAction = () => {
     setShowProfile(false);
     setTimeout(() => {
-      setIndex((prev) => (prev + 1) % MOCK_PROFILES.length);
+      setIndex((prev) => prev + 1);
       setShowProfile(true);
-    }, 300);
+    }, 250);
   };
 
   if (loading) {
     return (
-      <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', pt: 4 }}>
-        <Container maxWidth="xs">
-          <Skeleton variant="rectangular" height={500} sx={{ borderRadius: '32px', bgcolor: 'rgba(0,0,0,0.03)' }} />
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 4 }}>
-            <Skeleton variant="circular" width={72} height={72} />
-            <Skeleton variant="circular" width={72} height={72} />
-          </Box>
-        </Container>
-      </Box>
+      <Container maxWidth="xs" sx={{ pt: 10 }}>
+        <Skeleton variant="rectangular" height={450} sx={{ borderRadius: '32px' }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 4 }}>
+          <Skeleton variant="circular" width={68} height={68} />
+          <Skeleton variant="circular" width={68} height={68} />
+        </Box>
+      </Container>
     );
   }
 
   return (
-    <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', color: '#1A1A1B', pb: 12 }}>
-      {/* Page Header */}
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+    <PageWrapper>
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 900, letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
           <GroupsIcon sx={{ color: '#FFC845' }} /> HIVE DISCOVERY
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'rgba(0,0,0,0.4)', fontWeight: 700, letterSpacing: 1 }}>
-          FINDING SWARM MEMBERS NEARBY
         </Typography>
       </Box>
 
-      <Container maxWidth="xs">
+      <Container maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Fade in={showProfile} timeout={300}>
-          <Box>
+          <Box sx={{ width: '100%' }}>
             <DiscoveryCard elevation={0}>
               <HexagonContainer>
                 <img src={currentProfile.image} alt={currentProfile.name} />
               </HexagonContainer>
 
-              <Box sx={{ textAlign: 'center', mb: 1 }}>
+              <Box sx={{ textAlign: 'center' }}>
                 <MatchScore>{currentProfile.match}%</MatchScore>
                 <Typography variant="overline" sx={{ color: '#FFC845', fontWeight: 900, letterSpacing: 2 }}>
                   POLLEN MATCH
                 </Typography>
               </Box>
 
-              <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Box sx={{ textAlign: 'center', mt: 1 }}>
                 <Typography variant="h5" sx={{ fontWeight: 800 }}>{currentProfile.name}</Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(0,0,0,0.5)', mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                   <LocationOnIcon sx={{ fontSize: 16 }} /> {currentProfile.major}
@@ -216,20 +195,13 @@ const BeesMatch = () => {
                 
                 <Chip 
                   label={currentProfile.rank} 
-                  sx={{ 
-                    bgcolor: '#FFC845', 
-                    color: '#0A0A0B', 
-                    fontWeight: 800, 
-                    fontSize: '0.7rem',
-                    borderRadius: '6px',
-                    height: '24px'
-                  }} 
+                  sx={{ bgcolor: '#FFC845', color: '#0A0A0B', fontWeight: 800, fontSize: '0.7rem', height: '24px', borderRadius: '6px' }} 
                 />
               </Box>
 
               <Divider sx={{ my: 3, opacity: 0.1 }} />
 
-              <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', fontWeight: 800, mb: 1.5, display: 'block', textAlign: 'center' }}>
+              <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', fontWeight: 800, mb: 1, display: 'block', textAlign: 'center' }}>
                 SHARED POLLEN
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
@@ -246,7 +218,7 @@ const BeesMatch = () => {
                         color: isShared ? '#1A1A1B' : 'rgba(0,0,0,0.6)', 
                         border: isShared ? 'none' : '1px solid rgba(0,0,0,0.1)',
                         fontWeight: 700,
-                        fontSize: '0.75rem'
+                        fontSize: '0.7rem'
                       }} 
                     />
                   );
@@ -256,16 +228,8 @@ const BeesMatch = () => {
           </Box>
         </Fade>
 
-        {/* Action Controls */}
-        <Box sx={{ 
-          position: 'fixed', 
-          bottom: 32, 
-          left: '50%', 
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: 4,
-          zIndex: 10
-        }}>
+        {/* Action Buttons now sit in the flow below the card */}
+        <ActionBar>
           <Zoom in={!loading}>
             <ActionFab onClick={handleAction} aria-label="pass">
               <CloseIcon sx={{ fontSize: 32 }} />
@@ -273,13 +237,13 @@ const BeesMatch = () => {
           </Zoom>
           
           <Zoom in={!loading} style={{ transitionDelay: '100ms' }}>
-            <ActionFab variantType="match" onClick={handleAction} aria-label="like">
+            <ActionFab variantType="match" onClick={handleAction} aria-label="match">
               <FavoriteIcon sx={{ fontSize: 32 }} />
             </ActionFab>
           </Zoom>
-        </Box>
+        </ActionBar>
       </Container>
-    </Box>
+    </PageWrapper>
   );
 };
 
