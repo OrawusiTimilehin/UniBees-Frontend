@@ -105,31 +105,6 @@ const Explore = () => {
           mb: 4
         }}
       >
-        <Container maxWidth="lg">
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Stack direction="row" alignItems="center" spacing={1.5}>
-              <Box 
-                component="img"
-                src={logoPath}
-                alt="Logo"
-                sx={{ width: 54, height: 54, objectFit: 'contain' }}
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-              <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.02em' }}>
-                Hive <span style={{ color: '#FFC845' }}>Mind</span>
-              </Typography>
-            </Stack>
-
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1, bgcolor: alpha('#10B981', 0.1), px: 1.5, py: 0.5, borderRadius: 10 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10B981', boxShadow: '0 0 8px #10B981' }} />
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#10B981' }}>287 Online</Typography>
-              </Box>
-              <IconButton color="inherit"><BellIcon /></IconButton>
-              <IconButton color="inherit"><SettingsIcon /></IconButton>
-            </Stack>
-          </Stack>
-        </Container>
       </Box>
 
       <Container maxWidth="lg">

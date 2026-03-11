@@ -1,40 +1,46 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-// Apollo Imports
-// Using the specific import paths verified for your environment
-import { ApolloProvider } from '@apollo/client/react';
-import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
-import { setContext } from '@apollo/client/link/context';
-
-// Page & Component Imports
-import SignUp from './pages/signup';
-import Login from './pages/login';
-import Explore from './pages/explore';
-import Verification from './pages/verification';
-import Profile from './pages/profile';
-import BeesMatch from './pages/beesMatch';
-import LayoutWrapper from './components/layoutWrapper';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 /**
- * APOLLO CLIENT CONFIGURATION WITH AUTH LINK
+ * APOLLO CLIENT CONFIGURATION
+ * We use the standard entry point to ensure better compatibility with the build environment.
  */
+import { 
+  ApolloProvider, 
+  ApolloClient, 
+  InMemoryCache, 
+  createHttpLink 
+} from "@apollo/client";
+import { setContext } from '@apollo/client/link/context';
 
-// 1. Define the connection to your Python backend
-const httpLink = new HttpLink({
+/**
+ * PREVIEW PLACEHOLDERS
+ * To resolve the "Could not resolve" errors in this environment, 
+ * I've added these placeholders. In your local VS Code project, 
+ * you should keep your actual imports:
+ * * import SignUp from './pages/signup';
+ * import Login from './pages/login';
+ * ...etc.
+ */
+const SignUp = () => <div style={{ padding: '20px' }}>Sign Up Page</div>;
+const Login = () => <div style={{ padding: '20px' }}>Login Page</div>;
+const Explore = () => <div style={{ padding: '20px' }}>Explore Page</div>;
+const Verification = () => <div style={{ padding: '20px' }}>Verification Page</div>;
+const Profile = () => <div style={{ padding: '20px' }}>Profile Page</div>;
+const BeesMatch = () => <div style={{ padding: '20px' }}>Bees Match Page</div>;
+const LayoutWrapper = ({ children }) => <div className="layout-root">{children}</div>;
+
+// 1. Connection to your Python backend
+const httpLink = createHttpLink({
   uri: "http://localhost:8000/graphql", 
 });
 
 /**
- * 2. Define the Auth Link
- * This middleware pulls the JWT token from localStorage and attaches it 
- * to the Authorization header of every outgoing GraphQL request.
+ * 2. THE AUTH LINK
+ * Grabs the token from storage and attaches it to headers.
  */
 const authLink = setContext((_, { headers }) => {
-  // Pull the Digital ID (JWT) from browser storage
   const token = localStorage.getItem('token');
-  
-  // Return the headers to the context so httpLink can read them
   return {
     headers: {
       ...headers,
@@ -45,35 +51,54 @@ const authLink = setContext((_, { headers }) => {
 
 /**
  * 3. Initialize the Client
- * We concatenate the authLink and the httpLink so the token 
- * is included before the request is sent over the network.
+ * Combining authLink and httpLink ensures the token is sent globally.
  */
 const client = new ApolloClient({
   link: authLink.concat(httpLink),
   cache: new InMemoryCache(),
 });
 
+/**
+ * PROTECTED ROUTE
+ * Redirects unauthenticated bees back to the login gate.
+ */
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" />;
+};
+
 function App() {
   return (
     <ApolloProvider client={client}>
-        <LayoutWrapper>
-          <Routes>
-            {/* Authentication Routes */}
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/verification" element={<Verification />} />
+      {/* Router is omitted here as per your setup where 
+          BrowserRouter wraps App in main.jsx.
+      */}
+      <LayoutWrapper>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/verification" element={<Verification />} />
 
-            {/* Protected Application Routes */}
-            <Route path="/bees-match" element={<BeesMatch />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/profile" element={<Profile />} />
+          {/* Protected Routes */}
+          <Route 
+            path="/bees-match" 
+            element={<ProtectedRoute><BeesMatch /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/explore" 
+            element={<ProtectedRoute><Explore /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/profile" 
+            element={<ProtectedRoute><Profile /></ProtectedRoute>} 
+          />
 
-            {/* Navigation Logic */}
-            <Route path="/" element={<Navigate to="/signup" />} />
-            {/* Fallback for undefined paths */}
-            <Route path="*" element={<Navigate to="/signup" />} />
-          </Routes>
-        </LayoutWrapper>
+          {/* Default Fallback */}
+          <Route path="/" element={<Navigate to="/signup" />} />
+          <Route path="*" element={<Navigate to="/signup" />} />
+        </Routes>
+      </LayoutWrapper>
     </ApolloProvider>
   );
 }

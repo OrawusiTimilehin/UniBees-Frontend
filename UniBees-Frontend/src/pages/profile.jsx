@@ -1,50 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
-  Box, 
-  Container, 
-  Typography, 
-  IconButton, 
-  Button, 
-  Skeleton, 
-  Paper,
-  Chip,
-  TextField,
-  Switch,
-  Divider,
-  styled,
-  keyframes,
-  InputAdornment
+  Box, Container, Typography, IconButton, Button, Skeleton, Paper,
+  Chip, TextField, Stack, Divider, styled, Alert, Snackbar
 } from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
-import LockIcon from '@mui/icons-material/Lock';
-import PersonIcon from '@mui/icons-material/Person';
-import EmailIcon from '@mui/icons-material/Email';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import LogoutIcon from '@mui/icons-material/Logout';
-import SecurityIcon from '@mui/icons-material/Security';
-import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import TagIcon from '@mui/icons-material/Tag';
+import { 
+  Person as PersonIcon, Email as EmailIcon, Logout as LogoutIcon,
+  Add as AddIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon,
+  Lock as LockIcon
+} from '@mui/icons-material';
 
 /**
- * System Role: Senior Full-Stack Engineer
- * Project: UniBees (Campus Social Discovery)
- * Tech Stack: React, MUI v6
- * Palette: Pure White (#FFFFFF), Amber Yellow (#FFC845), Deep Slate (#1A1A1B)
- * UI: Light Mode Functional Settings using MUI Icons
+ * APOLLO IMPORTS
+ * We are using the main package entry point for hooks and gql.
+ * If resolution issues persist, ensuring 'npm install @apollo/client' is run locally is key.
  */
+import { useQuery, useMutation, gql } from '@apollo/client';
+import { useNavigate, Navigate } from 'react-router-dom';
+
+// --- GRAPHQL OPERATIONS ---
+
+const GET_ME = gql`
+  query GetMe {
+    me {
+      id
+      username
+      email
+      name
+      rank
+      interests
+      image
+    }
+  }
+`;
+
+const UPDATE_INTERESTS = gql`
+  mutation UpdateInterests($interests: [String!]!) {
+    updateInterests(interests: $interests) {
+      interests
+    }
+  }
+`;
+
+const CHANGE_PASSWORD = gql`
+  mutation ChangePassword($newPassword: String!) {
+    changePassword(newPassword: $newPassword)
+  }
+`;
 
 // --- STYLED COMPONENTS ---
 
-const glowAnimation = keyframes`
-  0% { filter: drop-shadow(0 0 2px rgba(255, 200, 69, 0.4)); }
-  50% { filter: drop-shadow(0 0 6px rgba(255, 200, 69, 0.8)); }
-  100% { filter: drop-shadow(0 0 2px rgba(255, 200, 69, 0.4)); }
-`;
-
-const HexagonBox = styled(Box)(({ size = 120, border = 4 }) => ({
+const HexagonBox = styled(Box)(({ size = 120 }) => ({
   position: 'relative',
   width: size,
   height: size,
@@ -53,326 +58,173 @@ const HexagonBox = styled(Box)(({ size = 120, border = 4 }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: border,
-    backgroundColor: '#FFFFFF',
-    clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)',
-    zIndex: 1,
-  },
   '& img': {
-    width: '100%',
-    height: '100%',
+    width: '92%',
+    height: '92%',
     objectFit: 'cover',
     zIndex: 2,
     clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)',
+    backgroundColor: '#FFF'
   }
-}));
-
-const XPProgressRing = styled(Box)(({ value }) => ({
-  position: 'relative',
-  padding: '12px',
-  borderRadius: '50%',
-  display: 'inline-flex',
-  background: `conic-gradient(#FFC845 ${value}%, #F0F0F0 0)`,
-  animation: `${glowAnimation} 3s infinite ease-in-out`,
 }));
 
 const AmberTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
-    color: '#1A1A1B',
-    backgroundColor: '#FFFFFF',
+    borderRadius: '12px',
     '& fieldset': { borderColor: 'rgba(0, 0, 0, 0.1)' },
-    '&:hover fieldset': { borderColor: '#FFC845' },
     '&.Mui-focused fieldset': { borderColor: '#FFC845' },
   },
-  '& .MuiInputLabel-root': { color: 'rgba(0, 0, 0, 0.5)' },
-  '& .MuiInputLabel-root.Mui-focused': { color: '#FFC845' },
 });
 
-const SettingsCard = styled(Paper)(({ theme }) => ({
-  backgroundColor: '#FFFFFF',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
-  padding: '20px',
-  borderRadius: '16px',
-  marginBottom: '16px',
-  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
-}));
-
-const AmberSwitch = styled(Switch)(({ theme }) => ({
-  '& .MuiSwitch-switchBase.Mui-checked': {
-    color: '#FFC845',
-    '& + .MuiSwitch-track': { backgroundColor: '#FFC845', opacity: 1 },
-  },
-  '& .MuiSwitch-track': {
-    backgroundColor: '#E0E0E0',
-  }
-}));
-
-// --- MAIN COMPONENT ---
-
 const Profile = () => {
-  const [loading, setLoading] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
   const [newInterest, setNewInterest] = useState("");
-  const [formData, setFormData] = useState({
-    username: "bee_master_99",
-    email: "alex.rivera@campus.edu",
-    notifications: true,
-    privacy: false,
-    interests: ["UX Research", "Cyberpunk", "Hive Mind", "Node.js"]
+  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+
+  // 1. Fetch Real Data with 'network-only' to ensure we bypass stale cache
+  const { data, loading, error } = useQuery(GET_ME, {
+    fetchPolicy: 'network-only',
+    errorPolicy: 'all'
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
+  // 2. Interest Mutation
+  const [saveInterests] = useMutation(UPDATE_INTERESTS, {
+    onCompleted: () => setToast({ open: true, message: 'Interests updated!', severity: 'success' }),
+    onError: (err) => setToast({ open: true, message: err.message, severity: 'error' })
+  });
 
-  const handleUpdate = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  // 3. Password Mutation
+  const [updatePass, { loading: passLoading }] = useMutation(CHANGE_PASSWORD, {
+    onCompleted: () => {
+      setToast({ open: true, message: 'Password updated!', severity: 'success' });
+      setPassword("");
+    },
+    onError: (err) => setToast({ open: true, message: err.message, severity: 'error' })
+  });
 
-  const addInterest = () => {
-    if (newInterest.trim() && !formData.interests.includes(newInterest.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        interests: [...prev.interests, newInterest.trim()]
-      }));
+  const handleAddInterest = () => {
+    if (newInterest.trim() && !data.me.interests.includes(newInterest.trim())) {
+      const updatedList = [...(data.me.interests || []), newInterest.trim()];
+      saveInterests({ variables: { interests: updatedList } });
       setNewInterest("");
     }
   };
 
-  const removeInterest = (interestToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.filter(i => i !== interestToRemove)
-    }));
+  const handleRemoveInterest = (interest) => {
+    const updatedList = data.me.interests.filter(i => i !== interest);
+    saveInterests({ variables: { interests: updatedList } });
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', p: 4 }}>
-        <Container maxWidth="sm">
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <Skeleton variant="circular" width={140} height={140} sx={{ bgcolor: 'rgba(0, 0, 0, 0.05)' }} />
-            <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 4, bgcolor: 'rgba(0, 0, 0, 0.05)' }} />
-          </Box>
-        </Container>
-      </Box>
-    );
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  if (loading) return (
+    <Container maxWidth="sm" sx={{ mt: 10, textAlign: 'center' }}>
+      <Skeleton variant="circular" width={120} height={120} sx={{ mx: 'auto', mb: 2 }} />
+      <Skeleton variant="text" width="60%" sx={{ mx: 'auto' }} />
+    </Container>
+  );
+
+  /**
+   * SESSION VALIDATION
+   * If 'me' is null, the token is invalid or expired.
+   */
+  if (error || !data?.me) {
+    return <Navigate to="/login" replace />;
   }
 
-  return (
-    <Box sx={{ bgcolor: '#F8F9FA', color: '#1A1A1B', minHeight: '100vh', pb: 6 }}>
-      {/* Top Navigation */}
-      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#FFFFFF', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-        <Typography variant="h6" sx={{ color: '#1A1A1B', fontWeight: 800, letterSpacing: 0.5 }}>HIVE SETTINGS</Typography>
-        <IconButton sx={{ color: '#1A1A1B' }}>
-          <SettingsIcon />
-        </IconButton>
-      </Box>
+  const user = data.me;
 
+  return (
+    <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', pb: 15 }}>
       <Container maxWidth="sm">
-        {/* Header Section */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 5, mt: 4 }}>
-          <XPProgressRing value={78}>
-            <HexagonBox size={130} border={4}>
-              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop" alt="Avatar" />
-            </HexagonBox>
-          </XPProgressRing>
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: '#1A1A1B' }}>
-              {formData.username}
-            </Typography>
-            <Chip 
-              label="ELDER SCOUT" 
-              sx={{ bgcolor: '#FFC845', color: '#0A0A0B', fontWeight: 'bold', mt: 1, height: 26, fontSize: '0.75rem', borderRadius: '6px' }} 
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 5 }}>
+          <HexagonBox size={140}>
+            {/* Fallback avatar based on name if user image is null */}
+            <img 
+              src={user.image || `https://ui-avatars.com/api/?background=FFC845&color=fff&name=${encodeURIComponent(user.name)}`} 
+              alt="Profile" 
             />
-          </Box>
+          </HexagonBox>
+          <Typography variant="h5" sx={{ fontWeight: 900, mt: 2 }}>{user.name}</Typography>
+          <Chip label={user.rank || "NEW BEE"} sx={{ bgcolor: '#FFC845', fontWeight: 'bold', mt: 1 }} />
         </Box>
 
-        {/* Identity Section */}
-        <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', mb: 1, ml: 1, display: 'block', letterSpacing: 1.5, fontWeight: 700 }}>Identity</Typography>
-        <SettingsCard elevation={0}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <AmberTextField 
-              fullWidth 
-              label="Username" 
-              value={formData.username}
-              onChange={(e) => handleUpdate('username', e.target.value)}
-              variant="outlined"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PersonIcon sx={{ color: '#FFC845', fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <AmberTextField 
-              fullWidth 
-              label="Email Address" 
-              value={formData.email}
-              onChange={(e) => handleUpdate('email', e.target.value)}
-              variant="outlined"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailIcon sx={{ color: '#FFC845', fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
-        </SettingsCard>
+        <Stack spacing={3}>
+          {/* Identity Section */}
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid rgba(0,0,0,0.05)' }}>
+            <Typography variant="overline" sx={{ fontWeight: 800, opacity: 0.5 }}>Identity</Typography>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <AmberTextField fullWidth label="Username" value={user.username || ""} disabled InputProps={{ startAdornment: <PersonIcon sx={{ mr: 1, color: '#FFC845' }} /> }} />
+              <AmberTextField fullWidth label="Email" value={user.email || ""} disabled InputProps={{ startAdornment: <EmailIcon sx={{ mr: 1, color: '#FFC845' }} /> }} />
+            </Stack>
+          </Paper>
 
-        {/* Interests Section */}
-        <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', mb: 1, ml: 1, display: 'block', letterSpacing: 1.5, fontWeight: 700 }}>Interests & Tags</Typography>
-        <SettingsCard elevation={0}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {formData.interests.map(interest => (
-                <Chip 
-                  key={interest} 
-                  label={interest}
-                  onDelete={() => removeInterest(interest)}
-                  deleteIcon={<CloseIcon sx={{ fontSize: '14px !important' }} />}
-                  sx={{ 
-                    bgcolor: '#FFC845', 
-                    color: '#0A0A0B', 
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    '& .MuiChip-deleteIcon': {
-                      color: '#0A0A0B',
-                      opacity: 0.7,
-                      '&:hover': { opacity: 1 }
-                    }
-                  }} 
-                />
+          {/* Interests Section */}
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid rgba(0,0,0,0.05)' }}>
+            <Typography variant="overline" sx={{ fontWeight: 800, opacity: 0.5 }}>My Pollen (Interests)</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, my: 2 }}>
+              {user.interests?.map(i => (
+                <Chip key={i} label={i} onDelete={() => handleRemoveInterest(i)} sx={{ bgcolor: '#FFC845', fontWeight: 600 }} />
               ))}
+              {(!user.interests || user.interests.length === 0) && (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 1 }}>
+                  Your pollen bag is empty! Add some interests below.
+                </Typography>
+              )}
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <AmberTextField 
-                fullWidth 
-                size="small"
-                label="Add Interest" 
-                value={newInterest}
-                onChange={(e) => setNewInterest(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addInterest()}
-                placeholder="Hiking..."
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <TagIcon sx={{ color: '#FFC845', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                }}
+                fullWidth label="Add Interest" value={newInterest} 
+                onChange={(e) => setNewInterest(e.target.value)} 
+                onKeyPress={(e) => e.key === 'Enter' && handleAddInterest()}
               />
-              <IconButton 
-                onClick={addInterest}
-                sx={{ 
-                  bgcolor: '#FFC845', 
-                  color: '#0A0A0B', 
-                  borderRadius: '12px',
-                  '&:hover': { bgcolor: '#e6b43d' }
-                }}
-              >
+              <Button variant="contained" onClick={handleAddInterest} sx={{ bgcolor: '#FFC845', color: '#000', borderRadius: 3, minWidth: 56 }}>
                 <AddIcon />
-              </IconButton>
+              </Button>
             </Box>
-          </Box>
-        </SettingsCard>
+          </Paper>
 
-        {/* Security Section */}
-        <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', mb: 1, ml: 1, display: 'block', letterSpacing: 1.5, fontWeight: 700 }}>Security</Typography>
-        <SettingsCard elevation={0}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <AmberTextField 
-              fullWidth 
-              type={showPassword ? 'text' : 'password'}
-              label="New Password" 
-              placeholder="••••••••"
-              variant="outlined"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockIcon sx={{ color: '#FFC845', fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ color: 'rgba(0,0,0,0.3)' }}>
-                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Button 
-              fullWidth 
-              variant="contained" 
-              sx={{ 
-                bgcolor: '#FFC845', 
-                color: '#0A0A0B', 
-                fontWeight: 800,
-                py: 1.6,
-                borderRadius: '12px',
-                boxShadow: '0 4px 14px rgba(255, 200, 69, 0.3)',
-                '&:hover': { bgcolor: '#e6b43d', boxShadow: '0 6px 20px rgba(255, 200, 69, 0.4)' }
-              }}
-            >
-              Update Credentials
-            </Button>
-          </Box>
-        </SettingsCard>
+          {/* Security Section */}
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid rgba(0,0,0,0.05)' }}>
+            <Typography variant="overline" sx={{ fontWeight: 800, opacity: 0.5 }}>Security</Typography>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <AmberTextField 
+                fullWidth label="New Password" type={showPassword ? 'text' : 'password'} 
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                InputProps={{ 
+                  endAdornment: <IconButton onClick={() => setShowPassword(!showPassword)}>{showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}</IconButton>,
+                  startAdornment: <LockIcon sx={{ mr: 1, color: '#FFC845' }} />
+                }} 
+              />
+              <Button 
+                fullWidth variant="contained" disabled={!password || passLoading} 
+                onClick={() => updatePass({ variables: { newPassword: password } })}
+                sx={{ bgcolor: '#1A1A1B', color: '#FFF', py: 1.5, borderRadius: 3 }}
+              >
+                {passLoading ? 'Updating...' : 'Update Password'}
+              </Button>
+            </Stack>
+          </Paper>
 
-        {/* Preferences Section */}
-        <Typography variant="overline" sx={{ color: 'rgba(0,0,0,0.4)', mb: 1, ml: 1, display: 'block', letterSpacing: 1.5, fontWeight: 700 }}>Preferences</Typography>
-        <SettingsCard elevation={0}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1, bgcolor: 'rgba(255, 200, 69, 0.1)', borderRadius: '10px', display: 'flex' }}>
-                <NotificationsIcon sx={{ color: '#FFC845', fontSize: 20 }} />
-              </Box>
-              <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Swarm Alerts</Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(0,0,0,0.5)' }}>Push notifications for events</Typography>
-              </Box>
-            </Box>
-            <AmberSwitch checked={formData.notifications} onChange={(e) => handleUpdate('notifications', e.target.checked)} />
-          </Box>
-          <Divider sx={{ my: 2, opacity: 0.6 }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1, bgcolor: 'rgba(255, 200, 69, 0.1)', borderRadius: '10px', display: 'flex' }}>
-                <SecurityIcon sx={{ color: '#FFC845', fontSize: 20 }} />
-              </Box>
-              <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Ghost Mode</Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(0,0,0,0.5)' }}>Hide location from map</Typography>
-              </Box>
-            </Box>
-            <AmberSwitch checked={formData.privacy} onChange={(e) => handleUpdate('privacy', e.target.checked)} />
-          </Box>
-        </SettingsCard>
-
-        {/* Logout */}
-        <Box sx={{ mt: 4, mb: 8, textAlign: 'center' }}>
           <Button 
-            startIcon={<LogoutIcon />}
-            sx={{ 
-              color: '#FF3B30', 
-              textTransform: 'none',
-              fontWeight: 700,
-              fontSize: '1rem',
-              '&:hover': { bgcolor: 'rgba(255, 59, 48, 0.05)' }
-            }}
+            fullWidth color="error" 
+            startIcon={<LogoutIcon />} 
+            onClick={handleLogout} 
+            sx={{ fontWeight: 800, textTransform: 'none', mt: 2 }}
           >
-            Logout of Hive
+            Leave the Hive (Logout)
           </Button>
-        </Box>
+        </Stack>
       </Container>
+
+      <Snackbar open={toast.open} autoHideDuration={3000} onClose={() => setToast({ ...toast, open: false })}>
+        <Alert severity={toast.severity} variant="filled" sx={{ width: '100%', borderRadius: 3 }}>{toast.message}</Alert>
+      </Snackbar>
     </Box>
   );
 };
