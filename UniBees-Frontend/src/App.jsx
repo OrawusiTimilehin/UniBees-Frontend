@@ -56,7 +56,6 @@ const client = new ApolloClient({
 function App() {
   return (
     <ApolloProvider client={client}>
-      <Router>
         <LayoutWrapper>
           <Routes>
             {/* Authentication Routes */}
@@ -75,7 +74,6 @@ function App() {
             <Route path="*" element={<Navigate to="/signup" />} />
           </Routes>
         </LayoutWrapper>
-      </Router>
     </ApolloProvider>
   );
 }
