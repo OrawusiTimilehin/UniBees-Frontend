@@ -88,7 +88,7 @@ const Navbar = ({ onlineCount = 287 }) => {
 
   const tabs = [
     { id: 'explore', icon: <ExploreIcon />, label: 'Explore', path: '/explore' },
-    { id: 'match', icon: <GroupsIcon />, label: 'Bees Match', path: '/match' },
+    { id: 'match', icon: <GroupsIcon />, label: 'Bees Match', path: '/bees-match' },
     { id: 'chats', icon: <ForumIcon />, label: 'Personal Chats', path: '/chats' },
   ];
 
@@ -99,7 +99,7 @@ const Navbar = ({ onlineCount = 287 }) => {
           <Toolbar disableGutters sx={{ height: 80, justifyContent: 'space-between' }}>
             
             {/* Logo Section */}
-            <LogoBox component={Link} to="/match">
+            <LogoBox component={Link} to="/explore">
               {/* Using a Hexagon styled to look like the bee icon in your screenshot */}
               <Box component="img" src="/src/assets/logo.png" sx={{ width: 32, height: 32 }} />
               
