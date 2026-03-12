@@ -30,6 +30,7 @@ import BeesMatch from './pages/beesMatch';
 import LayoutWrapper from './components/layoutWrapper';
 import Explore from './pages/explore';
 import Chats from './pages/personalChats';
+import ManageSwarms from './pages/swarmManagement';
 
 // 1. Connection to your Python backend (Port 8000)
 const httpLink = createHttpLink({
@@ -87,7 +88,10 @@ const App = () => {
             path="/profile" 
             element={<ProtectedRoute><Profile /></ProtectedRoute>} 
           />
-          
+          <Route 
+            path="/manage-swarms" 
+            element={<ProtectedRoute><ManageSwarms /></ProtectedRoute>} 
+          />
           {/* Module Placeholders */}
           <Route 
             path="/explore" 
@@ -99,8 +103,8 @@ const App = () => {
           />
 
           {/* Navigation Redirects */}
-          <Route path="/" element={<Navigate to="/bees-match" replace />} />
-          <Route path="*" element={<Navigate to="/bees-match" replace />} />
+          <Route path="/" element={<Navigate to="/explore" replace />} />
+          <Route path="*" element={<Navigate to="/explore" replace />} />
         </Routes>
       </LayoutWrapper>
     </ApolloProvider>

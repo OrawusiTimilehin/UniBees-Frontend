@@ -90,12 +90,12 @@ const ActionBar = styled(Box)({
   marginTop: '24px', // Space between the card and the buttons
   zIndex: 10,
   justifyContent: 'center',
-});
+})
 
-const ActionFab = styled(Fab)(({ variantType }) => ({
-  backgroundColor: variantType === 'match' ? '#FFC845' : '#FFFFFF',
-  color: variantType === 'match' ? '#1A1A1B' : '#FFC845',
-  border: variantType === 'match' ? 'none' : '2px solid #FFC845',
+const ActionFab = styled(Fab)(({ varianttype }) => ({
+  backgroundColor: varianttype === 'match' ? '#FFC845' : '#FFFFFF',
+  color: varianttype === 'match' ? '#1A1A1B' : '#FFC845',
+  border: varianttype === 'match' ? 'none' : '2px solid #FFC845',
   width: '68px',
   height: '68px',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
@@ -104,8 +104,8 @@ const ActionFab = styled(Fab)(({ variantType }) => ({
     transform: 'scale(0.9)',
   },
   '&:hover': {
-    backgroundColor: variantType === 'match' ? '#e6b43d' : 'rgba(255, 200, 69, 0.05)',
-    boxShadow: variantType === 'match' ? '0 8px 20px rgba(255, 200, 69, 0.4)' : '0 8px 20px rgba(0,0,0,0.1)',
+    backgroundColor: varianttype === 'match' ? '#e6b43d' : 'rgba(255, 200, 69, 0.05)',
+    boxShadow: varianttype === 'match' ? '0 8px 20px rgba(255, 200, 69, 0.4)' : '0 8px 20px rgba(0,0,0,0.1)',
   }
 }));
 
@@ -237,7 +237,7 @@ const BeesMatch = () => {
           </Zoom>
           
           <Zoom in={!loading} style={{ transitionDelay: '100ms' }}>
-            <ActionFab variantType="match" onClick={handleAction} aria-label="match">
+            <ActionFab variantype="match" onClick={handleAction} aria-label="match">
               <FavoriteIcon sx={{ fontSize: 32 }} />
             </ActionFab>
           </Zoom>
