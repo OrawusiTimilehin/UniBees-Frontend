@@ -1,226 +1,315 @@
 import React, { useState } from 'react';
 import { 
-  Box, 
-  Container, 
-  Typography, 
-  IconButton, 
-  Stack, 
-  alpha, 
-  useTheme, 
-  TextField, 
-  InputAdornment, 
-  Chip, 
-  Grid, 
-  Paper, 
-  LinearProgress,
-  styled 
+  Box, Container, Typography, IconButton, Button, Paper, 
+  Chip, Stack, styled, Tooltip, Dialog,
+  DialogTitle, DialogContent, DialogActions, TextField, InputAdornment,
+  Grid, Card, CardContent, CardMedia, Skeleton, Alert, Snackbar
 } from '@mui/material';
 import { 
-  NotificationsNone as BellIcon, 
-  SettingsOutlined as SettingsIcon, 
-  Search as SearchIcon,
-  ElectricBolt as ZapIcon,
-  LocationOnOutlined as LocationIcon,
-  PeopleAltOutlined as PeopleIcon,
-  Whatshot as FireIcon
+  Add as AddIcon,
+  Groups as GroupsIcon,
+  TrendingUp as TrendingIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 
-// --- Styled Components for the Stigmergic UI ---
-
-const PheromoneBar = styled(LinearProgress)(({ theme, value }) => ({
-  height: 10,
-  borderRadius: 5,
-  backgroundColor: alpha(theme.palette.primary.main, 0.1),
-  '& .MuiLinearProgress-bar': {
-    borderRadius: 5,
-    backgroundImage: value > 80 
-      ? `linear-gradient(90deg, #FFC845 0%, #FF4444 100%)` // High activity (Hot)
-      : `linear-gradient(90deg, #FFC845 0%, #FF8C00 100%)`, // Normal activity
-  },
-}));
-
-// Use shouldForwardProp to prevent custom 'hot' prop from reaching the DOM
-const SwarmCard = styled(Paper, {
-  shouldForwardProp: (prop) => prop !== 'hot',
-})(({ theme, hot }) => ({
-  // paddingX is increased for horizontal width, paddingY is kept tight
-  padding: theme.spacing(4), 
-  borderRadius: 24,
-  backgroundColor: theme.palette.background.paper,
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  cursor: 'pointer',
-  position: 'relative',
-  overflow: 'hidden',
-  display: 'flex',           
-  flexDirection: 'column',   
-  width: '100%',             // Ensures it takes full width of the grid item
-  border: `1px solid ${hot ? '#FFC845' : theme.palette.divider}`,
-  boxShadow: hot ? `0 0 20px ${alpha('#FFC845', 0.15)}` : 'none',
-  '&:hover': {
-    transform: 'translateY(-6px)',
-    borderColor: '#FFC845',
-    boxShadow: `0 12px 30px ${alpha('#000', 0.1)}`,
-  },
-}));
-
 /**
- * UniBees Explore Page
- * Includes Header, Search, Categories, and real-time Swarm Cards
+ * APOLLO CLIENT IMPORTS
+ * Split imports are used here to ensure compatibility with the bundler:
+ * - gql is imported from the core @apollo/client package.
+ * - Hooks are imported from @apollo/client/react.
  */
+import { gql } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
+
+// --- GRAPHQL OPERATIONS ---
+
+const GET_SWARMS = gql`
+  query GetSwarms {
+    swarms {
+      id
+      name
+      description
+      tags
+      nectarQuality
+    }
+  }
+`;
+
+const CREATE_SWARM_MUTATION = gql`
+  mutation CreateSwarm($name: String!, $description: String!, $tags: [String!]!) {
+    createSwarm(name: $name, description: $description, tags: $tags) {
+      id
+      name
+      tags
+      description
+    }
+  }
+`;
+
+// --- STYLED COMPONENTS ---
+
+const SwarmCard = styled(Card)({
+  borderRadius: '20px',
+  boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  border: '1px solid rgba(0,0,0,0.05)',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: '0 12px 40px rgba(255, 200, 69, 0.15)',
+  }
+});
+
 const Explore = () => {
-  const theme = useTheme();
-  const [search, setSearch] = useState('');
+  // State for Create Dialog
+  const [open, setOpen] = useState(false);
+  const [swarmName, setSwarmName] = useState('');
+  const [description, setDescription] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState([]);
+  
+  // Feedback State
+  const [errorToast, setErrorToast] = useState(null);
 
-  // Asset paths
-  const logoPath = "/src/assets/logo.png";
+  // 1. Fetch Active Swarms from the Hive
+  const { data, loading: queryLoading, error: queryError } = useQuery(GET_SWARMS);
 
-  // Mock Categories
-  const categories = ['All', '#Coding', '#Sports', '#Study', '#Fashion', '#Gaming', '#Music'];
+  // 2. Creation Mutation with Refetching Logic
+  const [createSwarm, { loading: mutationLoading }] = useMutation(CREATE_SWARM_MUTATION, {
+    refetchQueries: [{ query: GET_SWARMS }],
+    onCompleted: () => {
+      handleClose();
+    },
+    onError: (err) => {
+      setErrorToast(err.message);
+    }
+  });
 
-  // Mock Swarm Data (Matching the Pheromone Engine spec)
-  const swarms = [
-    { id: '1', title: 'Library Study Hive', category: 'Study', pheromone: 85, bees: 12, location: 'Level 3, Main Lib' },
-    { id: '2', title: 'Coffee Buzz', category: 'Social', pheromone: 42, bees: 8, location: 'Student Union' },
-    { id: '3', title: 'Gym Swarm', category: 'Fitness', pheromone: 15, bees: 3, location: 'Campus Gym' },
-    { id: '4', title: 'Late Night Coding', category: 'Gaming', pheromone: 96, bees: 21, location: 'CS Lab 2' },
-    { id: '5', title: 'Fashion Studio', category: 'Creative', pheromone: 60, bees: 5, location: 'Art Block' },
-    { id: '6', title: 'Music Jam', category: 'Music', pheromone: 30, bees: 4, location: 'Music Room B' },
-  ];
+  const handleClose = () => {
+    setOpen(false);
+    setSwarmName('');
+    setDescription('');
+    setTags([]);
+    setTagInput('');
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToDelete) => {
+    setTags(tags.filter(tag => tag !== tagToDelete));
+  };
 
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 12 }}>
-      
-      {/* 1. Header Bar */}
-      <Box 
-        sx={{ 
-          pt: 3, 
-          pb: 2, 
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: 'blur(10px)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-          mb: 4
-        }}
-      >
-      </Box>
+    <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', pt: 4, pb: 10 }}>
+      <Container maxWidth="md">
+        {/* Page Header */}
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'flex-start',
+          mb: 5 
+        }}>
+          <Box>
+            <Typography variant="h2" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+              Active Swarms
+            </Typography>
+            <Typography color="text.secondary" sx={{ fontWeight: 700, mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              Sorted by <span style={{ color: '#000' }}>Nectar Quality (N)</span> <TrendingIcon sx={{ fontSize: 18 }} />
+            </Typography>
+          </Box>
 
-      <Container maxWidth="lg">
-        {/* 2. Main Heading */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h3" sx={{ fontWeight: 900, mb: 0.5, fontSize: { xs: '2.4rem', md: '3rem' } }}>
-            Active Swarms
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Sorted by <span style={{ fontWeight: 700, color: theme.palette.text.primary }}>Nectar Quality (N)</span>
-          </Typography>
+          <Tooltip title="Start a Swarm" arrow placement="left">
+            <IconButton 
+              onClick={() => setOpen(true)}
+              sx={{ 
+                bgcolor: '#FFC845', 
+                color: '#000', 
+                width: 56,
+                height: 56,
+                boxShadow: '0 4px 14px rgba(255, 200, 69, 0.4)',
+                '&:hover': { bgcolor: '#e6b43d' } 
+              }}
+            >
+              <AddIcon sx={{ fontSize: 32 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
-        {/* 3. Search Bar */}
-        <TextField
-          fullWidth
-          placeholder="Search for a swarm or tag..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{
-            mb: 4,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 50,
-              bgcolor: 'background.paper',
-              '& fieldset': { borderColor: 'divider' },
-              height: 64
-            }
-          }}
-          InputProps={{
-            endAdornment: <InputAdornment position="end"><SearchIcon sx={{ color: 'text.secondary', mr: 1, fontSize: 28 }} /></InputAdornment>,
-          }}
-        />
+        {/* LOADING STATE */}
+        {queryLoading && (
+          <Grid container spacing={3}>
+            {[1, 2, 3, 4].map((i) => (
+              <Grid item xs={12} sm={6} key={i}>
+                <Skeleton variant="rectangular" height={280} sx={{ borderRadius: 5 }} />
+              </Grid>
+            ))}
+          </Grid>
+        )}
 
-        {/* 4. Category Tags */}
-        <Stack direction="row" spacing={1.5} sx={{ mb: 6, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { display: 'none' } }}>
-          {categories.map((category) => (
-            <Chip
-              key={category}
-              label={category}
-              clickable
-              sx={{
-                px: 2, py: 3, borderRadius: 4, fontWeight: 700,
-                fontSize: '1rem',
-                bgcolor: category === 'All' ? 'text.primary' : 'background.paper',
-                color: category === 'All' ? 'background.paper' : 'text.primary',
-                border: '1px solid',
-                borderColor: 'divider'
-              }}
-            />
-          ))}
-        </Stack>
+        {/* ERROR STATE */}
+        {queryError && (
+          <Alert severity="error" variant="outlined" sx={{ borderRadius: 3 }}>
+            The hive communication is down: {queryError.message}
+          </Alert>
+        )}
 
-        {/* 5. Swarm Card Grid - Fixed horizontal overlap by removing manual margin overrides */}
-        <Grid container spacing={4} rowSpacing={8}>
-          {swarms.map((swarm) => (
-            <Grid item xs={12} md={6} key={swarm.id}>
-              <SwarmCard elevation={0} hot={swarm.pheromone > 80}>
-                
-                {/* Top Row: Tag + Score */}
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: alpha('#FFC845', 0.1), px: 2, py: 0.8, borderRadius: 3 }}>
-                    <ZapIcon sx={{ fontSize: 20, color: '#FFC845' }} />
-                    <Typography variant="caption" sx={{ fontWeight: 900, color: '#FFC845', textTransform: 'uppercase', fontSize: '0.85rem' }}>
-                      {swarm.category}
+        {/* SWARMS GRID */}
+        {!queryLoading && !queryError && (
+          <Grid container spacing={3}>
+            {data?.swarms?.map((swarm) => (
+              <Grid item xs={12} sm={6} key={swarm.id}>
+                <SwarmCard>
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={swarm.image || "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400"}
+                    alt={swarm.name}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                       <Typography variant="h6" fontWeight={900}>{swarm.name}</Typography>
+                       <Chip 
+                         label={`N: ${swarm.nectarQuality || 80}`} 
+                         size="small" 
+                         sx={{ bgcolor: '#FFC845', fontWeight: 800, height: 20, fontSize: '0.65rem' }} 
+                       />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      {swarm.description}
                     </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="h4" sx={{ lineHeight: 1, color: swarm.pheromone > 80 ? '#FFC845' : 'inherit', fontWeight: 900 }}>
-                      {swarm.pheromone}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
-                      Nectar N
-                    </Typography>
-                  </Box>
-                </Stack>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {swarm.tags.map(tag => (
+                        <Chip key={tag} label={tag} size="small" variant="outlined" sx={{ borderRadius: 1.5, fontSize: '0.7rem' }} />
+                      ))}
+                    </Stack>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 2, color: 'text.secondary' }}>
+                      <PersonIcon sx={{ fontSize: 16 }} />
+                      <Typography variant="caption" fontWeight={700}>{swarm.members?.length || 0} members buzzing</Typography>
+                    </Box>
+                  </CardContent>
+                </SwarmCard>
+              </Grid>
+            ))}
 
-                {/* Swarm Title */}
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 800 }}>
-                  {swarm.title}
-                </Typography>
-
-                {/* Metadata: Location & Bee Count */}
-                <Stack direction="row" spacing={3} sx={{ mb: 4 }}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <LocationIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{swarm.location}</Typography>
-                  </Stack>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <PeopleIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{swarm.bees} Bees</Typography>
-                  </Stack>
-                </Stack>
-
-                {/* Spacer to push Pheromone bar to the bottom */}
-                <Box sx={{ flexGrow: 1, minHeight: 20 }} />
-
-                {/* Pheromone Level Indicator */}
-                <Box sx={{ mt: 'auto' }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', fontSize: 11, textTransform: 'uppercase' }}>
-                      Pheromone Level
-                    </Typography>
-                    {swarm.pheromone > 80 && (
-                      <Stack direction="row" alignItems="center" spacing={0.5}>
-                        <FireIcon sx={{ fontSize: 18, color: '#FF4444' }} />
-                        <Typography variant="caption" sx={{ fontWeight: 900, color: '#FF4444', textTransform: 'uppercase' }}>Hot</Typography>
-                      </Stack>
-                    )}
-                  </Stack>
-                  <PheromoneBar variant="determinate" value={swarm.pheromone} />
-                </Box>
-              </SwarmCard>
-            </Grid>
-          ))}
-        </Grid>
+            {data?.swarms?.length === 0 && (
+              <Grid item xs={12}>
+                <Paper sx={{ 
+                  p: 8, 
+                  textAlign: 'center', 
+                  borderRadius: 8, 
+                  border: '2px dashed rgba(0,0,0,0.05)', 
+                  bgcolor: 'transparent' 
+                }}>
+                  <GroupsIcon sx={{ fontSize: 60, color: 'rgba(0,0,0,0.1)', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    The hive is quiet... create a swarm to start buzzing!
+                  </Typography>
+                </Paper>
+              </Grid>
+            )}
+          </Grid>
+        )}
       </Container>
+
+      {/* CREATE SWARM DIALOG */}
+      <Dialog 
+        open={open} 
+        onClose={handleClose} 
+        fullWidth 
+        maxWidth="xs" 
+        PaperProps={{ sx: { borderRadius: 8, p: 1 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', pt: 3 }}>
+          Start a New Swarm
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2.5} sx={{ mt: 1 }}>
+            <TextField 
+              fullWidth label="Swarm Name" 
+              variant="outlined"
+              value={swarmName}
+              onChange={e => setSwarmName(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+            />
+
+            <Box>
+              <TextField 
+                fullWidth label="Add Tags / Categories" 
+                variant="outlined"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleAddTag} disabled={!tagInput.trim()} size="small">
+                        <AddIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+              />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.5 }}>
+                {tags.map((tag) => (
+                  <Chip 
+                    key={tag} 
+                    label={tag} 
+                    onDelete={() => handleRemoveTag(tag)}
+                    sx={{ bgcolor: '#FFC845', fontWeight: 700, borderRadius: 2 }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <TextField 
+              fullWidth 
+              multiline 
+              rows={3} 
+              label="Description" 
+              variant="outlined"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button onClick={handleClose} sx={{ color: 'text.secondary', fontWeight: 800 }}>
+            CANCEL
+          </Button>
+          <Button 
+            variant="contained" 
+            disabled={mutationLoading || !swarmName || tags.length === 0}
+            onClick={() => createSwarm({ variables: { name: swarmName, description, tags } })}
+            sx={{ 
+              bgcolor: '#FFC845', 
+              color: '#000', 
+              borderRadius: 3, 
+              fontWeight: 900, 
+              px: 4,
+              boxShadow: 'none',
+              '&:hover': { bgcolor: '#e6b43d', boxShadow: 'none' }
+            }}
+          >
+            {mutationLoading ? 'CREATING...' : 'CREATE'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ERROR SNACKBAR */}
+      <Snackbar open={!!errorToast} autoHideDuration={6000} onClose={() => setErrorToast(null)}>
+        <Alert severity="error" variant="filled" sx={{ borderRadius: 3 }}>
+          {errorToast}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -101,10 +101,8 @@ const Navbar = ({ onlineCount = 287 }) => {
             {/* Logo Section */}
             <LogoBox component={Link} to="/match">
               {/* Using a Hexagon styled to look like the bee icon in your screenshot */}
-              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                 <HexagonIcon sx={{ color: '#FFC845', fontSize: 32 }} />
-                 <Typography sx={{ position: 'absolute', fontSize: '12px', fontWeight: 900 }}>🐝</Typography>
-              </Box>
+              <Box component="img" src="/src/assets/logo.png" sx={{ width: 32, height: 32 }} />
+              
               <Typography variant="h5" sx={{ fontWeight: 900, display: 'flex', alignItems: 'center' }}>
                 Uni<span style={{ color: '#FFC845', marginLeft: '4px' }}>Bees</span>
               </Typography>
