@@ -13,7 +13,13 @@ import {
   ChatBubbleOutline as ChatIcon 
 } from '@mui/icons-material';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { gql} from '@apollo/client';
+
+/**
+ * APOLLO CLIENT IMPORTS
+ * Split imports to help resolve environment-specific bundling issues 
+ * while maintaining compatibility with your local Vite project.
+ */
+import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import io from 'socket.io-client';
 
@@ -79,21 +85,29 @@ const SwarmChats = () => {
 
   const { data, loading, error } = useQuery(GET_CHAT_DATA, { 
     variables: { id },
-    onCompleted: (data) => setMessages(data?.getSwarmMessages || []),
-    fetchPolicy: 'network-only'
+    fetchPolicy: 'network-only' // Force fetch to ensure messages are always current when coming back
   });
 
+  // Sync messages state when data is loaded/fetched
   useEffect(() => {
-    // Ensure this matches your Python Backend URL
+    if (data?.getSwarmMessages) {
+      setMessages(data.getSwarmMessages);
+    }
+  }, [data]);
+
+  useEffect(() => {
     const newSocket = io('http://localhost:8000');
     setSocket(newSocket);
     newSocket.emit('join_swarm', { swarm_id: id });
     
     newSocket.on('receive_message', (msg) => {
-      // Avoid duplicates if we already added it via Optimistic UI
       setMessages(prev => {
-        const exists = prev.find(m => m.timestamp === msg.timestamp && m.text === msg.text);
-        return exists ? prev : [...prev, msg];
+        // Prevent duplicates from optimistic UI
+        const isDuplicate = prev.some(m => 
+          (m.timestamp === msg.timestamp && m.text === msg.text && (m.senderId === msg.sender_id || m.sender_id === msg.sender_id))
+        );
+        if (isDuplicate) return prev;
+        return [...prev, msg];
       });
     });
 
@@ -109,44 +123,55 @@ const SwarmChats = () => {
   const handleSend = () => {
     if (!inputText.trim() || !socket || !data?.me) return;
 
+    const timestamp = new Date().toISOString();
+    
+    // We create a payload that works for both Python (snake_case) 
+    // and our local React rendering (camelCase)
     const payload = {
-      swarmId: id,
+      swarm_id: id,
       text: inputText,
+      sender_id: data.me.id,
+      sender_name: data.me.name,
+      timestamp: timestamp,
+      // Duplicates for frontend rendering consistency
       senderId: data.me.id,
       senderName: data.me.name,
-      timestamp: new Date().toISOString()
+      swarmId: id
     };
 
-    // 1. Optimistic UI: Add to screen immediately
+    // 1. Optimistic UI Update
     setMessages(prev => [...prev, payload]);
 
     // 2. Network: Send to backend
-    // Fixed: Corrected comment syntax from Python style (#) to JavaScript style (//)
-    socket.emit('send_message', { ...payload, swarm_id: id }); // Sending snake_case to Python
+    socket.emit('send_message', payload);
     
     setInputText('');
   };
 
-  if (loading) return <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><CircularProgress sx={{ color: '#FFC845' }} /></Box>;
+  if (loading && !data) return (
+    <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+      <CircularProgress sx={{ color: '#FFC845' }} />
+    </Box>
+  );
 
-  if (error || !data?.getSwarm) return (
+  if (error || (data && !data.getSwarm)) return (
     <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3 }}>
       <Typography variant="h6" fontWeight={800} color="error">Swarm Not Found</Typography>
       <Button variant="contained" onClick={() => navigate('/explore')} sx={{ mt: 2, bgcolor: '#FFC845', color: '#000' }}>Return to Explore</Button>
     </Box>
   );
 
-  const swarm = data.getSwarm;
+  const swarm = data?.getSwarm;
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#FDFDFD', pb: 12 }}>
       {/* Header */}
       <Box sx={{ p: 2, bgcolor: '#FFF', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 2 }}>
         <IconButton onClick={() => navigate('/explore')} size="small"><BackIcon /></IconButton>
-        <Avatar src={swarm.image || "/logo.png"} sx={{ width: 45, height: 45, border: '2px solid #FFC845' }} />
+        <Avatar src={swarm?.image || "/logo.png"} sx={{ width: 45, height: 45, border: '2px solid #FFC845' }} />
         <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h6" fontWeight={900} sx={{ lineHeight: 1.2 }}>{swarm.name}</Typography>
-          <Typography variant="caption" sx={{ color: '#4CAF50', fontWeight: 800 }}>● {swarm.members?.length || 1} Scouts</Typography>
+          <Typography variant="h6" fontWeight={900} sx={{ lineHeight: 1.2 }}>{swarm?.name}</Typography>
+          <Typography variant="caption" sx={{ color: '#4CAF50', fontWeight: 800 }}>● {swarm?.members?.length || 1} Scouts</Typography>
         </Box>
         <IconButton size="small"><NotificationsIcon /></IconButton>
       </Box>
@@ -154,19 +179,22 @@ const SwarmChats = () => {
       {/* Message Area */}
       <Box ref={scrollRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3 }}>
         <Container maxWidth="md">
-          {messages.length === 0 && (
+          {messages.length === 0 && !loading && (
             <Typography variant="body2" sx={{ textAlign: 'center', mt: 4, color: 'text.secondary', fontStyle: 'italic' }}>
               The hive is quiet. Start the buzz!
             </Typography>
           )}
           {messages.map((m, idx) => {
-            const isMe = m.senderId === data.me?.id;
-            const isQueen = m.senderId === swarm.creatorId;
+            const sId = m.senderId || m.sender_id;
+            const sName = m.senderName || m.sender_name;
+            const isMe = sId === data?.me?.id;
+            const isQueen = sId === swarm?.creatorId;
+            
             return (
               <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', mb: 2.5 }}>
                 {!isMe && (
                   <Typography variant="caption" fontWeight={900} sx={{ mb: 0.5, ml: 1 }}>
-                    {m.senderName} {isQueen && <Chip label="Queen" size="small" sx={{ height: 16, fontSize: 9, bgcolor: '#FFFBEB', border: '1px solid #FFC845' }} />}
+                    {sName} {isQueen && <Chip label="Queen" size="small" sx={{ height: 16, fontSize: 9, bgcolor: '#FFFBEB', border: '1px solid #FFC845' }} />}
                   </Typography>
                 )}
                 <MessageBubble isMe={isMe}>
@@ -187,7 +215,7 @@ const SwarmChats = () => {
           <TextField 
             fullWidth placeholder="Buzz something..." 
             value={inputText} onChange={e => setInputText(e.target.value)}
-            onKeyPress={e => e.key === 'Enter' && handleSend()}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             InputProps={{
               sx: { borderRadius: '30px', bgcolor: '#F5F5F5', px: 2, '& fieldset': { border: 'none' } },
               endAdornment: (
@@ -200,6 +228,12 @@ const SwarmChats = () => {
         </Container>
       </Box>
 
+      {/* Persistent Nav */}
+      <FloatingNav elevation={0}>
+        <IconButton component={Link} to="/explore" sx={{ color: 'rgba(0,0,0,0.4)' }}><ExploreIcon /></IconButton>
+        <IconButton component={Link} to="/bees-match" sx={{ color: 'rgba(0,0,0,0.4)' }}><GroupsIcon /></IconButton>
+        <IconButton component={Link} to="/chats" sx={{ color: 'rgba(0,0,0,0.4)' }}><ChatIcon /></IconButton>
+      </FloatingNav>
     </Box>
   );
 };
