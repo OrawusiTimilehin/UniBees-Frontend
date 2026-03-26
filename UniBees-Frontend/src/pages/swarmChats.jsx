@@ -1,31 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, Container, Typography, IconButton, TextField, 
-  Avatar, Paper, Stack, styled, Badge, CircularProgress, Chip
+  Avatar, Paper, styled, CircularProgress, Chip, Button
 } from '@mui/material';
 import { 
   Send as SendIcon, 
-  NotificationsNone as NotificationsIcon,
-  Tag as TagIcon
+  NotificationsNone as NotificationsIcon, 
+  ArrowBack as BackIcon, 
+  FiberManualRecord as OnlineIcon, 
+  Explore as ExploreIcon, 
+  Groups as GroupsIcon, 
+  ChatBubbleOutline as ChatIcon 
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
-import { gql, useQuery, useMutation } from '@apollo/client';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { gql} from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import io from 'socket.io-client';
 
-// --- QUERIES ---
 const GET_CHAT_DATA = gql`
   query GetChatData($id: String!) {
-    swarm(id: $id) {
+    getSwarm(id: $id) {
       id
       name
       image
       members
+      creatorId
     }
-    get_swarm_messages(swarm_id: $id) {
+    getSwarmMessages(swarmId: $id) {
       id
       text
-      sender_id
-      sender_name
+      senderId
+      senderName
       timestamp
     }
     me {
@@ -35,100 +40,141 @@ const GET_CHAT_DATA = gql`
   }
 `;
 
-// --- STYLED COMPONENTS (Matching Screenshot) ---
-const ChatHeader = styled(Box)({
-  padding: '20px 24px',
-  backgroundColor: '#FFF',
-  borderBottom: '1px solid rgba(0,0,0,0.08)',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-});
-
 const MessageBubble = styled(Box)(({ isMe }) => ({
-  maxWidth: '70%',
-  padding: '16px 24px',
+  maxWidth: '75%',
+  padding: '12px 20px',
   borderRadius: isMe ? '24px 24px 4px 24px' : '24px 24px 24px 4px',
-  backgroundColor: isMe ? '#FFC845' : '#FFF',
-  border: isMe ? 'none' : '1px solid rgba(0,0,0,0.08)',
+  backgroundColor: isMe ? '#FFC845' : '#FFFFFF',
+  border: isMe ? 'none' : '1px solid rgba(0,0,0,0.1)',
   boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-  position: 'relative',
-  marginBottom: '4px'
+  marginBottom: '4px',
+  transition: 'transform 0.2s ease',
 }));
 
-const SwarmChat = () => {
+const FloatingNav = styled(Paper)({
+  position: 'fixed',
+  bottom: 24,
+  left: '50%',
+  transform: 'translateX(-50%)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-around',
+  width: '280px',
+  padding: '8px 12px',
+  borderRadius: '40px',
+  backgroundColor: '#FFFFFF',
+  border: '1px solid rgba(0, 0, 0, 0.08)',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+  zIndex: 1000,
+});
+
+const SwarmChats = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const scrollRef = useRef(null);
+  
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
 
-  const { data, loading } = useQuery(GET_CHAT_DATA, { 
+  const { data, loading, error } = useQuery(GET_CHAT_DATA, { 
     variables: { id },
-    onCompleted: (data) => setMessages(data.get_swarm_messages)
+    onCompleted: (data) => setMessages(data?.getSwarmMessages || []),
+    fetchPolicy: 'network-only'
   });
 
   useEffect(() => {
+    // Ensure this matches your Python Backend URL
     const newSocket = io('http://localhost:8000');
     setSocket(newSocket);
     newSocket.emit('join_swarm', { swarm_id: id });
-    newSocket.on('receive_message', (msg) => setMessages(prev => [...prev, msg]));
+    
+    newSocket.on('receive_message', (msg) => {
+      // Avoid duplicates if we already added it via Optimistic UI
+      setMessages(prev => {
+        const exists = prev.find(m => m.timestamp === msg.timestamp && m.text === msg.text);
+        return exists ? prev : [...prev, msg];
+      });
+    });
+
     return () => newSocket.close();
   }, [id]);
 
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSend = () => {
     if (!inputText.trim() || !socket || !data?.me) return;
+
     const payload = {
-      swarm_id: id,
+      swarmId: id,
       text: inputText,
-      sender_id: data.me.id,
-      sender_name: data.me.name,
+      senderId: data.me.id,
+      senderName: data.me.name,
       timestamp: new Date().toISOString()
     };
-    socket.emit('send_message', payload);
+
+    // 1. Optimistic UI: Add to screen immediately
+    setMessages(prev => [...prev, payload]);
+
+    // 2. Network: Send to backend
+    // Fixed: Corrected comment syntax from Python style (#) to JavaScript style (//)
+    socket.emit('send_message', { ...payload, swarm_id: id }); // Sending snake_case to Python
+    
     setInputText('');
   };
 
-  if (loading) return <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><CircularProgress sx={{ color: '#FFC845' }} /></Box>;
+
+  if (error || !data?.getSwarm) return (
+    <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+      <Typography variant="h6" fontWeight={800} color="error">Swarm Not Found</Typography>
+      <Button variant="contained" onClick={() => navigate('/explore')} sx={{ mt: 2, bgcolor: '#FFC845', color: '#000' }}>Return to Explore</Button>
+    </Box>
+  );
+
+  const swarm = data.getSwarm;
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#F8F9FA' }}>
-      {/* Header (Top Nav Style from Screenshot) */}
-      <ChatHeader>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar src="/src/assets/logo.png" sx={{ width: 48, height: 48 }} />
-          <Box>
-            <Typography variant="h5" fontWeight={900}>{data.swarm.name}</Typography>
-            <Typography variant="caption" sx={{ color: '#4CAF50', fontWeight: 800 }}>
-              ● {data.swarm.members.length} Scouts
-            </Typography>
-          </Box>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#FDFDFD', pb: 12 }}>
+      {/* Header */}
+      <Box sx={{ p: 2, bgcolor: '#FFF', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 2 }}>
+        <IconButton onClick={() => navigate('/explore')} size="small"><BackIcon /></IconButton>
+        <Avatar src={swarm.image || "/logo.png"} sx={{ width: 45, height: 45, border: '2px solid #FFC845' }} />
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" fontWeight={900} sx={{ lineHeight: 1.2 }}>{swarm.name}</Typography>
+          <Typography variant="caption" sx={{ color: '#4CAF50', fontWeight: 800 }}>● {swarm.members?.length || 1} Scouts</Typography>
         </Box>
-        <IconButton><NotificationsIcon /></IconButton>
-      </ChatHeader>
+        <IconButton size="small"><NotificationsIcon /></IconButton>
+      </Box>
 
-      {/* Messages */}
-      <Box ref={scrollRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 4 }}>
+      {/* Message Area */}
+      <Box ref={scrollRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3 }}>
         <Container maxWidth="md">
-          {messages.map((msg, idx) => {
-            const isMe = msg.sender_id === data.me.id;
+          {messages.length === 0 && (
+            <Typography variant="body2" sx={{ textAlign: 'center', mt: 4, color: 'text.secondary', fontStyle: 'italic' }}>
+              The hive is quiet. Start the buzz!
+            </Typography>
+          )}
+          {messages.map((m, idx) => {
+            const isMe = m.senderId === data.me?.id;
+            const isQueen = m.senderId === swarm.creatorId;
             return (
-              <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', mb: 3 }}>
+              <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', mb: 2.5 }}>
                 {!isMe && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, cursor: 'pointer' }} onClick={() => navigate(`/profile/${msg.sender_id}`)}>
-                    <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>{msg.sender_name[0]}</Avatar>
-                    <Typography variant="caption" fontWeight={900}>{msg.sender_name} <Chip label="Queen" size="small" sx={{ height: 16, fontSize: 10, bgcolor: '#FFFBEB' }} /></Typography>
-                  </Box>
+                  <Typography variant="caption" fontWeight={900} sx={{ mb: 0.5, ml: 1 }}>
+                    {m.senderName} {isQueen && <Chip label="Queen" size="small" sx={{ height: 16, fontSize: 9, bgcolor: '#FFFBEB', border: '1px solid #FFC845' }} />}
+                  </Typography>
                 )}
                 <MessageBubble isMe={isMe}>
-                  <Typography variant="body1">{msg.text}</Typography>
+                  <Typography variant="body2" fontWeight={500}>{m.text}</Typography>
                 </MessageBubble>
-                <Typography variant="caption" sx={{ opacity: 0.4, fontSize: 10 }}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
+                <Typography variant="caption" sx={{ opacity: 0.4, fontSize: 9, mt: 0.2 }}>
+                   {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
               </Box>
             );
           })}
@@ -136,28 +182,26 @@ const SwarmChat = () => {
       </Box>
 
       {/* Input */}
-      <Box sx={{ p: 3, bgcolor: '#FFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+      <Box sx={{ p: 2, bgcolor: '#FFF', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
         <Container maxWidth="md">
           <TextField 
-            fullWidth 
-            placeholder="Buzz something..." 
-            variant="outlined" 
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
+            fullWidth placeholder="Buzz something..." 
+            value={inputText} onChange={e => setInputText(e.target.value)}
             onKeyPress={e => e.key === 'Enter' && handleSend()}
             InputProps={{
-              sx: { borderRadius: '24px', bgcolor: '#F3F3F3' },
+              sx: { borderRadius: '30px', bgcolor: '#F5F5F5', px: 2, '& fieldset': { border: 'none' } },
               endAdornment: (
-                <IconButton onClick={handleSend} sx={{ bgcolor: inputText.trim() ? '#FFC845' : 'transparent', color: '#000', ml: 1 }}>
-                  <SendIcon />
+                <IconButton onClick={handleSend} disabled={!inputText.trim()} sx={{ color: inputText.trim() ? '#FFC845' : 'grey.300' }}>
+                  <SendIcon fontSize="small" />
                 </IconButton>
               )
             }}
           />
         </Container>
       </Box>
+
     </Box>
   );
 };
 
-export default SwarmChat;
+export default SwarmChats;

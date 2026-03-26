@@ -14,11 +14,11 @@ import {
 } from '@mui/icons-material';
 
 /**
- * APOLLO CLIENT IMPORTS
- * Splitting imports to ensure resolution within the specific preview environment.
+ * APOLLO CLIENT & ROUTER IMPORTS
  */
+import {useQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client';
-import { useQuery, useMutation } from '@apollo/client/react';
+import { useNavigate } from 'react-router-dom';
 
 // --- GRAPHQL OPERATIONS ---
 
@@ -86,9 +86,11 @@ const PulseCardHorizontal = styled(Card)({
   flexDirection: 'row',
   height: '200px', 
   width: '100%',
+  cursor: 'pointer', // Added cursor to indicate clickability
   '&:hover': {
     transform: 'translateY(-4px)',
     boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+    borderColor: '#FFC845', // Visual cue on hover
   }
 });
 
@@ -103,6 +105,7 @@ const PheromoneBar = styled(LinearProgress)({
 });
 
 const Explore = () => {
+  const navigate = useNavigate(); // Initialize navigation hook
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTag, setActiveTag] = useState('All');
@@ -154,9 +157,6 @@ const Explore = () => {
 
   return (
     <Box sx={{ bgcolor: '#F9F9F9', minHeight: '100vh', pt: 4, pb: 15 }}>
-      {/* Container xl with custom padding to ensure everything aligns perfectly.
-        Grid container spacing is compensated to align items with non-grid elements.
-      */}
       <Container maxWidth="xl" sx={{ px: { xs: 2, sm: 3, md: 4 } }}> 
         
         {/* HEADER AREA */}
@@ -225,13 +225,11 @@ const Explore = () => {
         ) : queryError ? (
           <Alert severity="error" sx={{ borderRadius: 4 }}>Hive Connection Error: {queryError.message}</Alert>
         ) : (
-          /* Grid container with negative margin logic to ensure outer items touch the same edges
-             as the search bar above.
-          */
           <Grid container spacing={3} sx={{ width: 'calc(100% + 24px)', ml: '-12px' }}>
             {filteredSwarms.map((swarm) => (
               <Grid item xs={12} md={6} lg={4} key={swarm.id}> 
-                <PulseCardHorizontal>
+                {/* Navigates to swarm chat on click */}
+                <PulseCardHorizontal onClick={() => navigate(`/swarm/${swarm.id}`)}>
                   {/* Swarm Image */}
                   <CardMedia
                     component="img"
@@ -357,4 +355,4 @@ const Explore = () => {
   );
 };
 
-export default Explore;
+export default Explore; 
