@@ -28,7 +28,8 @@ import LayoutWrapper from './components/layoutWrapper';
 import Explore from './pages/explore';
 import Chats from './pages/personalChats';
 import ManageSwarms from './pages/swarmManagement';
-import SwarmChat from './pages/swarmChats'; // Added the missing Chat Page
+import SwarmChat from './pages/swarmChats';
+import PublicProfile from './pages/publicProfile';
 
 // 1. Connection to your Python backend (Port 8000)
 const httpLink = createHttpLink({
@@ -103,6 +104,7 @@ const App = () => {
             path="/swarm/:id" 
             element={<ProtectedRoute><SwarmChat /></ProtectedRoute>} 
           />
+          <Route path="/profile/:userId" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
 
           {/* Navigation Redirects */}
           <Route path="/" element={<Navigate to="/explore" replace />} />

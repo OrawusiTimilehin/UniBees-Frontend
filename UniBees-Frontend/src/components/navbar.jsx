@@ -1,15 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Box, 
-  Container, 
-  styled,
-  Paper,
-  Tooltip,
-  IconButton,
-  Badge
+  AppBar, Toolbar, Typography, Box, Container, styled, Paper, 
+  Tooltip, IconButton, Badge, Menu, MenuItem, Avatar, Button,
+  Divider, List, ListItem, ListItemAvatar, ListItemText
 } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -19,18 +12,18 @@ import ExploreIcon from '@mui/icons-material/Explore';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ForumIcon from '@mui/icons-material/Forum';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SettingsIcon from '@mui/icons-material/Settings';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
-/**
- * Component: Navbar
- * Recreated based on the "Hive Mind" screenshot.
- * Updated branding: "Uni" (Black) "Bees" (Yellow).
- */
+import io from 'socket.io-client';
+
+// --- STYLED COMPONENTS ---
 
 const TopHeader = styled(AppBar)(({ theme }) => ({
-  backgroundColor: '#FFFFFF',
-  borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+  backgroundColor: 'rgba(255, 255, 255, 0.98)',
+  backdropFilter: 'blur(10px)',
+  borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
   color: '#1A1A1B',
   top: 0,
 }));
@@ -38,21 +31,11 @@ const TopHeader = styled(AppBar)(({ theme }) => ({
 const LogoBox = styled(Box)({
   display: 'flex',
   alignItems: 'center',
-  gap: '12px',
+  gap: '8px',
   cursor: 'pointer',
   textDecoration: 'none',
   color: 'inherit'
 });
-
-const OnlinePill = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  backgroundColor: '#F0F9F4', // Very pale green
-  padding: '6px 16px',
-  borderRadius: '24px',
-  marginRight: theme.spacing(2),
-}));
 
 const FloatingNav = styled(Paper)(({ theme }) => ({
   position: 'fixed',
@@ -77,14 +60,31 @@ const NavItem = styled(IconButton)(({ active }) => ({
   borderRadius: '50%',
   '&:hover': {
     backgroundColor: active ? '#FFC845' : 'rgba(255, 200, 69, 0.1)',
-    color: active ? '#1A1A1B' : '#FFC845',
   },
   '& svg': { fontSize: 26 }
 }));
 
-const Navbar = ({ onlineCount = 287 }) => {
+const Navbar = ({ onlineCount = 1242 }) => {
   const location = useLocation();
   const currentPath = location.pathname;
+  
+  // Notification State
+  const [notifications, setNotifications] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  useEffect(() => {
+    const socket = io('http://localhost:8000');
+    
+    // Listen for real-time social alerts
+    socket.on('new_notification', (data) => {
+      setNotifications(prev => [data, ...prev]);
+    });
+
+    return () => socket.close();
+  }, []);
+
+  const handleOpenNotifs = (event) => setAnchorEl(event.currentTarget);
+  const handleCloseNotifs = () => setAnchorEl(null);
 
   const tabs = [
     { id: 'explore', icon: <ExploreIcon />, label: 'Explore', path: '/explore' },
@@ -96,50 +96,88 @@ const Navbar = ({ onlineCount = 287 }) => {
     <>
       <TopHeader position="fixed" elevation={0}>
         <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ height: 80, justifyContent: 'space-between' }}>
-            
-            {/* Logo Section */}
+          <Toolbar disableGutters sx={{ height: 70, justifyContent: 'space-between' }}>
             <LogoBox component={Link} to="/explore">
-              {/* Using a Hexagon styled to look like the bee icon in your screenshot */}
-              <Box component="img" src="/src/assets/logo.png" sx={{ width: 32, height: 32 }} />
-              
-              <Typography variant="h5" sx={{ fontWeight: 900, display: 'flex', alignItems: 'center' }}>
-                Uni<span style={{ color: '#FFC845', marginLeft: '4px' }}>Bees</span>
+              <HexagonIcon sx={{ color: '#FFC845', fontSize: 28 }} />
+              <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: -0.5 }}>
+                UNIBEES
               </Typography>
             </LogoBox>
 
-            {/* Status & Actions */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <OnlinePill>
-                <FiberManualRecordIcon sx={{ color: '#52C41A', fontSize: 12 }} />
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#52C41A' }}>
-                  {onlineCount} Online
-                </Typography>
-              </OnlinePill>
-              
-              <IconButton sx={{ color: '#1A1A1B' }}>
-                <Badge variant="dot" color="error">
-                  <NotificationsNoneIcon sx={{ fontSize: 28 }} />
+              {/* Notification Bell */}
+              <IconButton onClick={handleOpenNotifs}>
+                <Badge badgeContent={notifications.length} color="error">
+                  <NotificationsIcon />
                 </Badge>
               </IconButton>
-
-              <IconButton 
-                component={Link} 
-                to="/profile"
-                sx={{ 
-                  color: currentPath === '/profile' ? '#FFC845' : '#1A1A1B',
-                  transition: '0.2s'
-                }}
-              >
-                <SettingsOutlinedIcon sx={{ fontSize: 28 }} />
+              
+              <IconButton component={Link} to="/profile" sx={{ color: currentPath === '/profile' ? '#FFC845' : 'inherit' }}>
+                <SettingsIcon />
               </IconButton>
             </Box>
-
           </Toolbar>
         </Container>
       </TopHeader>
 
-      {/* Persistent Floating Navigation for App Logic */}
+      {/* NOTIFICATION DROPDOWN MENU */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseNotifs}
+        PaperProps={{
+          sx: { width: 320, maxHeight: 400, borderRadius: 4, mt: 1.5, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }
+        }}
+      >
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="subtitle1" fontWeight={900}>Hive Alerts</Typography>
+          {notifications.length > 0 && (
+            <Button size="small" onClick={() => setNotifications([])} sx={{ color: '#FFC845', fontWeight: 800 }}>Clear All</Button>
+          )}
+        </Box>
+        <Divider />
+        
+        {notifications.length === 0 ? (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">No new buzzes yet.</Typography>
+          </Box>
+        ) : (
+          <List sx={{ p: 0 }}>
+            {notifications.map((notif, index) => (
+              <ListItem key={index} sx={{ py: 2, alignItems: 'flex-start' }}>
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: '#FFFBEB', color: '#FFC845', border: '1px solid #FFC845' }}>
+                    <PersonAddIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="body2" fontWeight={700}>
+                    {notif.from_name || "A Bee"} sent you a request!
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                    Wants to join your swarm
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Button 
+                      size="small" variant="contained" 
+                      sx={{ bgcolor: '#FFC845', color: '#000', borderRadius: 2, fontWeight: 800, fontSize: '0.7rem' }}
+                    >
+                      Accept
+                    </Button>
+                    <Button 
+                      size="small" variant="outlined" 
+                      sx={{ borderRadius: 2, fontWeight: 800, fontSize: '0.7rem', color: 'text.secondary' }}
+                    >
+                      Ignore
+                    </Button>
+                  </Stack>
+                </Box>
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </Menu>
+
       <FloatingNav elevation={0}>
         {tabs.map((tab) => (
           <Tooltip key={tab.id} title={tab.label} arrow placement="top">
@@ -148,18 +186,12 @@ const Navbar = ({ onlineCount = 287 }) => {
               to={tab.path}
               active={currentPath === tab.path ? 1 : 0}
             >
-              {tab.id === 'chats' ? (
-                <Badge badgeContent={3} sx={{ '& .MuiBadge-badge': { bgcolor: '#FFC845', color: '#1A1A1B', fontWeight: 900 } }}>
-                  {tab.icon}
-                </Badge>
-              ) : tab.icon}
+              {tab.icon}
             </NavItem>
           </Tooltip>
         ))}
       </FloatingNav>
-      
-      {/* Spacer to prevent content from going under the header */}
-      <Box sx={{ height: 80 }} />
+      <Box sx={{ height: 70 }} />
     </>
   );
 };
