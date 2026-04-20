@@ -30,6 +30,7 @@ import Chats from './pages/personalChats';
 import ManageSwarms from './pages/swarmManagement';
 import SwarmChat from './pages/swarmChats';
 import PublicProfile from './pages/publicProfile';
+import PrivateChat from './pages/privateChatroom';
 
 // 1. Connection to your Python backend (Port 8000)
 const httpLink = createHttpLink({
@@ -105,6 +106,8 @@ const App = () => {
             element={<ProtectedRoute><SwarmChat /></ProtectedRoute>} 
           />
           <Route path="/profile/:userId" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
+          <Route path="/chat/:userId" element={<ProtectedRoute><PrivateChat /></ProtectedRoute>} />
+
 
           {/* Navigation Redirects */}
           <Route path="/" element={<Navigate to="/explore" replace />} />
