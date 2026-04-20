@@ -3,7 +3,7 @@ import {
   Box, Container, Typography, IconButton, TextField, 
   Avatar, Paper, styled, CircularProgress, Chip, Button,
   List, ListItem, ListItemAvatar, ListItemText, Divider,
-  InputAdornment, Badge, Stack, Fade
+  InputAdornment, Badge, Stack, Fade, alpha, Grid
 } from '@mui/material';
 import { 
   Send as SendIcon, 
@@ -11,36 +11,37 @@ import {
   Search as SearchIcon,
   PersonAddOutlined as PendingIcon,
   ChatBubbleOutline as ChatIcon,
-  FiberManualRecord as OnlineIcon,
   ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-
-import { useQuery } from '@apollo/client/react';
-import { gql } from '@apollo/client';
+/**
+ * APOLLO CLIENT IMPORTS
+ * Consolidating imports to the primary entry point to resolve bundling issues.
+ */
+import { gql} from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 import io from 'socket.io-client';
 
-// GRAPHQL 
-const GET_PERSONAL_CHAT_DATA = gql`
-  query GetPersonalChatData {
+// --- GRAPHQL ---
+const GET_PERSONAL_DATA = gql`
+  query GetPersonalData {
     me {
       id
       name
-      friends # List of IDs
+      friends
       image
     }
-    notifications { # Used here to see incoming pending requests
+    notifications {
       id
-      from_user_id
-      from_name
+      fromUserId  # Updated from from_user_id
+      fromName    # Updated from from_name
       status
       type
     }
   }
 `;
 
-// get details of multiple users (friends)
 const GET_FRIENDS_DETAILS = gql`
   query GetFriendsDetails($ids: [String!]!) {
     getUsersByIds(ids: $ids) {
@@ -53,18 +54,24 @@ const GET_FRIENDS_DETAILS = gql`
   }
 `;
 
+const RESPOND_TO_REQUEST = gql`
+  mutation RespondToRequest($id: String!, $action: String!) {
+    respondToFriendRequest(notificationId: $id, action: $action)
+  }
+`;
+
 // --- STYLED COMPONENTS ---
 const SearchBar = styled(TextField)({
   '& .MuiOutlinedInput-root': {
     borderRadius: '12px',
     backgroundColor: '#F5F5F5',
     '& fieldset': { border: 'none' },
-    '&:hover fieldset': { border: 'none' },
-    '&.Mui-focused fieldset': { border: 'none' },
   }
 });
 
-const MessageBubble = styled(Box)(({ isMe }) => ({
+const MessageBubble = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isMe',
+})(({ isMe }) => ({
   maxWidth: '75%',
   padding: '12px 18px',
   borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
@@ -78,31 +85,36 @@ const PersonalChats = () => {
   const navigate = useNavigate();
   const scrollRef = useRef(null);
   
-  const [view, setView] = useState('list'); 
+  const [view, setView] = useState('list');
   const [activeFriend, setActiveFriend] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
 
-  const { data: meData, loading: meLoading } = useQuery(GET_PERSONAL_CHAT_DATA);
+  // 1. Fetch Basic Data with Loading/Error handling
+  const { data: meData, loading: meLoading, error: meError, refetch: refetchMe } = useQuery(GET_PERSONAL_DATA, {
+    fetchPolicy: 'cache-and-network'
+  });
   
+  // 2. Fetch Friend Details
   const { data: friendsData, loading: friendsLoading } = useQuery(GET_FRIENDS_DETAILS, {
     variables: { ids: meData?.me?.friends || [] },
     skip: !meData?.me?.friends?.length
   });
 
+  const [respond] = useMutation(RESPOND_TO_REQUEST, {
+    onCompleted: () => refetchMe()
+  });
 
+  // Socket management
   useEffect(() => {
     if (!meData?.me?.id) return;
     const newSocket = io('http://localhost:8000');
     setSocket(newSocket);
-
     newSocket.emit('identify_bee', { user_id: meData.me.id });
 
     newSocket.on('receive_private_message', (msg) => {
-      // Only add to state if it's from the person we are currently talking to
       if (activeFriend && (msg.sender_id === activeFriend.id || msg.sender_id === meData.me.id)) {
         setMessages(prev => [...prev, msg]);
       }
@@ -115,24 +127,15 @@ const PersonalChats = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  // LOGIC
   const filteredFriends = useMemo(() => {
     if (!friendsData?.getUsersByIds) return [];
     return friendsData.getUsersByIds.filter(f => 
-      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.username.toLowerCase().includes(searchQuery.toLowerCase())
+      f.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [friendsData, searchQuery]);
 
-  const handleOpenChat = (friend) => {
-    setActiveFriend(friend);
-    setMessages([]); 
-    setView('chat');
-  };
-
   const handleSendPrivate = () => {
     if (!inputText.trim() || !socket || !meData?.me || !activeFriend) return;
-
     const payload = {
       recipient_id: activeFriend.id,
       sender_id: meData.me.id,
@@ -140,137 +143,138 @@ const PersonalChats = () => {
       text: inputText,
       timestamp: new Date().toISOString()
     };
-
-    setMessages(prev => [...prev, payload]);
     socket.emit('send_private_message', payload);
     setInputText('');
   };
 
-  if (meLoading) return <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><CircularProgress sx={{ color: '#FFC845' }} /></Box>;
+  // SAFETY CHECK: Handle loading and error states before rendering logic
+  if (meLoading && !meData) return (
+    <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+      <CircularProgress sx={{ color: '#FFC845' }} />
+    </Box>
+  );
 
-  //  RENDER VIEWS
+  if (meError) return (
+    <Container sx={{ mt: 10, textAlign: 'center' }}>
+      <Typography color="error" fontWeight={800}>Hive Connection Lost: {meError.message}</Typography>
+      <Button onClick={() => refetchMe()} sx={{ mt: 2, color: '#FFC845' }}>Retry Buzzing</Button>
+    </Container>
+  );
 
-  const renderPendingView = () => (
-    <Fade in={true}>
-      <Box>
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid #EEE' }}>
-          <IconButton onClick={() => setView('list')}><BackIcon /></IconButton>
-          <Typography variant="h6" fontWeight={900}>Pending Requests</Typography>
-        </Box>
-        <List sx={{ p: 2 }}>
-          {meData.notifications?.filter(n => n.status === 'PENDING').map(notif => (
-            <ListItem key={notif.id} sx={{ bgcolor: '#FFF', borderRadius: 4, mb: 1, border: '1px solid #F0F0F0' }}>
-              <ListItemAvatar><Avatar sx={{ bgcolor: '#FFC845' }}>{notif.from_name[0]}</Avatar></ListItemAvatar>
-              <ListItemText primary={notif.from_name} secondary="Wants to connect" primaryTypographyProps={{ fontWeight: 800 }} />
-              <Stack direction="row" spacing={1}>
-                <Button size="small" variant="contained" sx={{ bgcolor: '#FFC845', color: '#000', borderRadius: 2, fontWeight: 800 }}>Accept</Button>
-                <Button size="small" variant="outlined" sx={{ borderRadius: 2, color: 'text.secondary' }}>Ignore</Button>
-              </Stack>
-            </ListItem>
-          ))}
-          {(!meData.notifications || meData.notifications.length === 0) && (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>No requests found in your pollen bag.</Typography>
+  // --- RENDERING LOGIC ---
+
+  const renderListView = () => (
+    <Box sx={{ p: 3, pb: 12 }}>
+      <Typography variant="h4" fontWeight={900} mb={3}>Personal <span style={{ color: '#FFC845' }}>Inbox</span></Typography>
+      
+      <Stack spacing={2} mb={4}>
+        <SearchBar 
+          fullWidth 
+          placeholder="Search friends..." 
+          value={searchQuery} 
+          onChange={e => setSearchQuery(e.target.value)}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} 
+        />
+        
+        <Button 
+          fullWidth 
+          variant="outlined" 
+          startIcon={<PendingIcon />} 
+          onClick={() => setView('pending')}
+          sx={{ 
+            py: 1.5, borderRadius: 3, color: '#000', fontWeight: 800, 
+            textTransform: 'none', justifyContent: 'flex-start', px: 2,
+            borderColor: 'rgba(0,0,0,0.1)'
+          }}
+        >
+          Pending Swarm Requests
+          <Box sx={{ flexGrow: 1 }} />
+          {meData?.notifications?.length > 0 && (
+            <Badge badgeContent={meData.notifications.length} color="error" sx={{ mr: 1 }} />
           )}
-        </List>
-      </Box>
-    </Fade>
+          <ChevronRightIcon />
+        </Button>
+      </Stack>
+
+      <Typography variant="overline" fontWeight={900} color="text.secondary">YOUR SWARM CONNECTIONS</Typography>
+      
+      <List sx={{ mt: 1 }}>
+        {filteredFriends.map(friend => (
+          <Paper key={friend.id} elevation={0} sx={{ mb: 1.5, borderRadius: 4, border: '1px solid #EEE' }}>
+            <ListItem button onClick={() => { setActiveFriend(friend); setView('chat'); setMessages([]); }} sx={{ py: 2 }}>
+              <ListItemAvatar><Avatar src={friend.image} /></ListItemAvatar>
+              <ListItemText primary={friend.name} secondary={friend.major} primaryTypographyProps={{ fontWeight: 800 }} />
+              <ChatIcon sx={{ color: '#FFC845' }} />
+            </ListItem>
+          </Paper>
+        ))}
+        {filteredFriends.length === 0 && !friendsLoading && (
+          <Typography variant="body2" sx={{ textAlign: 'center', py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
+            No hive members found.
+          </Typography>
+        )}
+      </List>
+    </Box>
   );
 
   const renderChatView = () => (
-    <Fade in={true}>
-      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#FDFDFD' }}>
-        <Box sx={{ p: 2, bgcolor: '#FFF', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton onClick={() => setView('list')} size="small"><BackIcon /></IconButton>
-          <Avatar src={activeFriend?.image} sx={{ border: '2px solid #FFC845' }} />
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="subtitle1" fontWeight={900}>{activeFriend?.name}</Typography>
-            <Typography variant="caption" sx={{ color: '#4CAF50', fontWeight: 800 }}>● Online</Typography>
-          </Box>
-        </Box>
-
-        <Box ref={scrollRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3 }}>
-          <Container maxWidth="md">
-            {messages.map((m, idx) => {
-              const isMe = m.sender_id === meData.me.id;
-              return (
-                <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', mb: 2 }}>
-                  <MessageBubble isMe={isMe}>
-                    <Typography variant="body2" fontWeight={500}>{m.text}</Typography>
-                  </MessageBubble>
-                  <Typography variant="caption" sx={{ opacity: 0.4, fontSize: 9 }}>{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
-                </Box>
-              );
-            })}
-          </Container>
-        </Box>
-
-        <Box sx={{ p: 2, bgcolor: '#FFF', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-          <Container maxWidth="md">
-            <TextField 
-              fullWidth placeholder="Buzz something..." value={inputText} onChange={e => setInputText(e.target.value)}
-              onKeyPress={e => e.key === 'Enter' && handleSendPrivate()}
-              InputProps={{
-                sx: { borderRadius: '30px', bgcolor: '#F5F5F5', px: 2, '& fieldset': { border: 'none' } },
-                endAdornment: <IconButton onClick={handleSendPrivate} disabled={!inputText.trim()} sx={{ color: inputText.trim() ? '#FFC845' : 'grey.300' }}><SendIcon fontSize="small" /></IconButton>
-              }}
-            />
-          </Container>
-        </Box>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#FDFDFD' }}>
+      <Box sx={{ p: 2, bgcolor: '#FFF', borderBottom: '1px solid #EEE', display: 'flex', alignItems: 'center', gap: 2 }}>
+        <IconButton onClick={() => setView('list')}><BackIcon /></IconButton>
+        <Avatar src={activeFriend?.image} sx={{ border: '2px solid #FFC845' }} />
+        <Typography variant="subtitle1" fontWeight={900}>{activeFriend?.name}</Typography>
       </Box>
-    </Fade>
+      <Box ref={scrollRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 3 }}>
+        <Container maxWidth="md">
+          {messages.map((m, i) => (
+            <Box key={i} sx={{ display: 'flex', flexDirection: 'column', alignItems: m.sender_id === meData?.me?.id ? 'flex-end' : 'flex-start', mb: 2 }}>
+              <MessageBubble isMe={m.sender_id === meData?.me?.id}>
+                <Typography variant="body2" fontWeight={500}>{m.text}</Typography>
+              </MessageBubble>
+            </Box>
+          ))}
+        </Container>
+      </Box>
+      <Box sx={{ p: 2, bgcolor: '#FFF', borderTop: '1px solid #EEE' }}>
+        <Container maxWidth="md">
+          <TextField 
+            fullWidth placeholder="Buzz something..." 
+            value={inputText} 
+            onChange={e => setInputText(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleSendPrivate()}
+            InputProps={{ 
+              sx: { borderRadius: '30px', bgcolor: '#F5F5F5', px: 2, '& fieldset': { border: 'none' } },
+              endAdornment: <IconButton onClick={handleSendPrivate} sx={{ color: '#FFC845' }}><SendIcon fontSize="small" /></IconButton>
+            }} 
+          />
+        </Container>
+      </Box>
+    </Box>
   );
 
-  const renderListView = () => (
-    <Fade in={true}>
-      <Box sx={{ p: 3, pb: 12 }}>
-        <Typography variant="h4" fontWeight={900} sx={{ mb: 3, letterSpacing: -1 }}>Personal <span style={{ color: '#FFC845' }}>Inbox</span></Typography>
-        
-        <Stack spacing={2} mb={4}>
-          <SearchBar 
-            fullWidth placeholder="Search friends..." 
-            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'rgba(0,0,0,0.3)' }} /></InputAdornment> }}
-          />
-          
-          <Button 
-            fullWidth variant="outlined" startIcon={<PendingIcon />} onClick={() => setView('pending')}
-            sx={{ py: 1.5, borderRadius: 3, borderColor: 'rgba(255,200,69,0.3)', color: '#000', fontWeight: 800, textTransform: 'none', justifyContent: 'flex-start', px: 2 }}
-          >
-            Pending Swarm Requests
-            <Box sx={{ flexGrow: 1 }} />
-            {meData.notifications?.length > 0 && <Badge badgeContent={meData.notifications.length} color="error" sx={{ mr: 1 }} />}
-            <ChevronRightIcon sx={{ opacity: 0.3 }} />
-          </Button>
-        </Stack>
-
-        <Typography variant="overline" fontWeight={900} color="text.secondary" sx={{ letterSpacing: 1.5 }}>YOUR SWARM CONNECTIONS</Typography>
-        
-        <List sx={{ mt: 1 }}>
-          {filteredFriends.map((friend) => (
-            <Paper key={friend.id} elevation={0} sx={{ mb: 1.5, borderRadius: 4, border: '1px solid rgba(0,0,0,0.04)', transition: '0.2s', '&:hover': { bgcolor: alpha('#FFC845', 0.05), transform: 'translateX(4px)' } }}>
-              <ListItem button onClick={() => handleOpenChat(friend)} sx={{ py: 2 }}>
-                <ListItemAvatar>
-                  <Badge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot" sx={{ '& .MuiBadge-badge': { backgroundColor: '#44b700', color: '#44b700', boxShadow: '0 0 0 2px #FFF' } }}>
-                    <Avatar src={friend.image} sx={{ border: '2px solid #FFF' }} />
-                  </Badge>
-                </ListItemAvatar>
-                <ListItemText 
-                  primary={friend.name} secondary={friend.major || "Scholar Bee"} 
-                  primaryTypographyProps={{ fontWeight: 800 }} secondaryTypographyProps={{ fontWeight: 600, fontSize: '0.75rem' }} 
-                />
-                <ChatIcon sx={{ color: '#FFC845', opacity: 0.8 }} />
-              </ListItem>
-            </Paper>
-          ))}
-          {filteredFriends.length === 0 && !friendsLoading && (
-            <Box sx={{ textAlign: 'center', py: 8, opacity: 0.5 }}>
-              <Avatar sx={{ mx: 'auto', mb: 2, bgcolor: 'rgba(0,0,0,0.03)', width: 60, height: 60 }}><ChatIcon sx={{ color: '#000' }} /></Avatar>
-              <Typography variant="body2" fontWeight={800}>No friends found in this sector.</Typography>
-            </Box>
-          )}
-        </List>
+  const renderPendingView = () => (
+    <Box>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid #EEE' }}>
+        <IconButton onClick={() => setView('list')}><BackIcon /></IconButton>
+        <Typography variant="h6" fontWeight={900}>Pending Requests</Typography>
       </Box>
-    </Fade>
+      <List sx={{ p: 2 }}>
+        {meData?.notifications?.map(n => (
+          <ListItem key={n.id} sx={{ bgcolor: '#FFF', borderRadius: 4, mb: 1, border: '1px solid #F0F0F0' }}>
+            {/* Updated references from n.from_name to n.fromName */}
+            <ListItemAvatar><Avatar sx={{ bgcolor: '#FFC845' }}>{n.fromName ? n.fromName[0] : 'B'}</Avatar></ListItemAvatar>
+            <ListItemText primary={n.fromName} secondary="Wants to connect" primaryTypographyProps={{ fontWeight: 800 }} />
+            <Stack direction="row" spacing={1}>
+              <Button size="small" variant="contained" onClick={() => respond({ variables: { id: n.id, action: 'ACCEPT' } })} sx={{ bgcolor: '#FFC845', color: '#000', fontWeight: 800 }}>Accept</Button>
+              <Button size="small" variant="outlined" onClick={() => respond({ variables: { id: n.id, action: 'IGNORE' } })}>Ignore</Button>
+            </Stack>
+          </ListItem>
+        ))}
+        {(!meData?.notifications || meData.notifications.length === 0) && (
+          <Typography sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>No pending buzzes in your bag.</Typography>
+        )}
+      </List>
+    </Box>
   );
 
   return (
