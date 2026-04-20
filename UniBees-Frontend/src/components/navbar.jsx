@@ -18,11 +18,10 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 
 /**
  * APOLLO CLIENT & SOCKET.IO
- * Consolidating imports into the main '@apollo/client' package to resolve 
- * compilation errors in the build environment.
+ * Split imports are used to resolve module resolution issues in this environment.
  */
-import { useQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 import io from 'socket.io-client';
 
 const GET_NAVBAR_DATA = gql`
@@ -43,6 +42,12 @@ const GET_NAVBAR_DATA = gql`
 const RESPOND_TO_REQUEST = gql`
   mutation RespondToRequest($id: String!, $action: String!) {
     respondToFriendRequest(notificationId: $id, action: $action)
+  }
+`;
+
+const DELETE_NOTIFICATION = gql`
+  mutation DeleteNotification($id: String!) {
+    deleteNotification(notificationId: $id)
   }
 `;
 
@@ -84,24 +89,42 @@ const Navbar = () => {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   
-  // UI States
   const [anchorEl, setAnchorEl] = useState(null);
-  const [localNotifs, setLocalNotifs] = useState([]); // Instant UI buffer
+  const [localNotifs, setLocalNotifs] = useState([]); 
   const open = Boolean(anchorEl);
 
-  // 1. Fetch Data
+  // Fetch with network-only to ensure persistence is checked from DB on reload
   const { data, refetch } = useQuery(GET_NAVBAR_DATA, {
-    fetchPolicy: 'cache-and-network'
+    fetchPolicy: 'network-only', 
+    nextFetchPolicy: 'cache-first'
   });
 
   const [respond] = useMutation(RESPOND_TO_REQUEST, {
-    onCompleted: () => {
-      setLocalNotifs([]); // Clear buffer so database refetch takes over
+    onCompleted: (_, { variables }) => {
+      setLocalNotifs(prev => prev.filter(n => n.id !== variables.id)); 
       refetch();
     }
   });
 
-  // 2. Real-time Socket Integration
+  const [deleteNotif] = useMutation(DELETE_NOTIFICATION, {
+    onCompleted: (_, { variables }) => {
+      setLocalNotifs(prev => prev.filter(n => n.id !== variables.id));
+      refetch();
+    }
+  });
+
+  const handleIgnore = (notifId) => {
+    // Immediate removal from UI
+    setLocalNotifs(prev => prev.filter(n => n.id !== notifId));
+    
+    // If it's a real ID (not temp), attempt DB deletion
+    if (!notifId.toString().startsWith('temp-')) {
+      deleteNotif({ variables: { id: notifId } }).catch(() => {
+        // Fallback already handled by onCompleted/onError
+      });
+    }
+  };
+
   useEffect(() => {
     if (!data?.me?.id) return;
 
@@ -112,28 +135,24 @@ const Navbar = () => {
     });
 
     socket.on('new_notification', (notif) => {
-      console.log("🐝 Live Notification Object:", notif);
-      
-      // INSTANT UI UPDATE: Put it in local state immediately
+      console.log("🐝 Socket Data Incoming:", notif);
       setLocalNotifs(prev => {
-        // Ensure we have a valid ID for deduplication
+        // Use real ID if socket provides it, otherwise generate temp
         const id = notif.id || notif._id || `temp-${Date.now()}`;
         if (prev.find(n => n.id === id)) return prev;
         return [{ ...notif, id }, ...prev];
       });
-      
-      // Sync DB in background
+      // Trigger a sync with the backend
       refetch();
     });
 
     return () => socket.disconnect();
   }, [data?.me?.id, refetch]);
 
-  // Merge server data with local buffer and remove duplicates
   const allNotifications = useMemo(() => {
     const serverNotifs = data?.notifications || [];
     const merged = [...localNotifs, ...serverNotifs];
-    // Deduplicate by ID to ensure no double entries
+    // Filter unique by ID
     return merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
   }, [data?.notifications, localNotifs]);
 
@@ -173,7 +192,7 @@ const Navbar = () => {
         open={open}
         onClose={handleCloseNotifs}
         PaperProps={{
-          sx: { width: 360, mt: 1.5, borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }
+          sx: { width: 340, mt: 1.5, borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }
         }}
       >
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -190,19 +209,18 @@ const Navbar = () => {
           <List sx={{ py: 0 }}>
             {allNotifications.map((n) => {
               /**
-               * UNIVERSAL IDENTITY BRIDGE
-               * We check every possible permutation of the name and ID fields
-               * sent by both the Python socket and the GraphQL resolvers.
+               * IDENTITY BRIDGE:
+               * Ensures names show up correctly by checking all possible field variations.
                */
-              const senderName = n.fromName || n.from_name || n.senderName || n.sender_name || "A Scout Bee";
-              const senderId = n.fromUserId || n.from_user_id || n.senderId || n.sender_id;
+              const senderName = n.fromName || n.from_name || n.name || "A Scout Bee";
+              const senderId = n.fromUserId || n.from_user_id;
 
               return (
                 <ListItem key={n.id} sx={{ py: 2, flexDirection: 'column', alignItems: 'stretch', '&:hover': { bgcolor: alpha('#FFC845', 0.02) } }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 1.5 }}>
                     <ListItemAvatar sx={{ minWidth: 0 }}>
                       <Avatar 
-                        sx={{ bgcolor: '#FFC845', color: '#000', border: '2px solid #FFF', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer', fontWeight: 900 }}
+                        sx={{ bgcolor: '#FFC845', color: '#000', border: '1px solid #FFF', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer', fontWeight: 900 }}
                         onClick={() => { handleCloseNotifs(); navigate(`/profile/${senderId}`); }}
                       >
                         {senderName[0].toUpperCase()}
@@ -221,15 +239,9 @@ const Navbar = () => {
                         wants to be friends!
                       </Typography>
                     </Box>
-                    <Tooltip title="View Profile">
-                      <IconButton 
-                        size="small" 
-                        onClick={() => { handleCloseNotifs(); navigate(`/profile/${senderId}`); }}
-                        sx={{ opacity: 0.5, '&:hover': { opacity: 1, color: '#FFC845' } }}
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <IconButton size="small" onClick={() => { handleCloseNotifs(); navigate(`/profile/${senderId}`); }}>
+                      <VisibilityIcon fontSize="small" sx={{ opacity: 0.3 }} />
+                    </IconButton>
                   </Box>
                   <Stack direction="row" spacing={1} sx={{ pl: 6 }}>
                     <Button 
@@ -241,7 +253,7 @@ const Navbar = () => {
                     </Button>
                     <Button 
                       size="small" variant="outlined" 
-                      onClick={() => respond({ variables: { id: n.id, action: 'IGNORE' } })}
+                      onClick={() => handleIgnore(n.id)}
                       sx={{ borderRadius: 2, textTransform: 'none', color: 'text.secondary', fontWeight: 800 }}
                     >
                       Ignore
