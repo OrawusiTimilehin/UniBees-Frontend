@@ -53,7 +53,7 @@ const Login = () => {
   // Apollo Mutation Hook
   const [loginUser, { loading }] = useMutation(LOGIN_MUTATION, {
     onCompleted: (data) => {
-      //  Store the Digital ID (JWT)
+      //  Store the Digital ID 
       localStorage.setItem('token', data.login.token);
       
       // Fly to the matching page
@@ -199,7 +199,7 @@ const Login = () => {
                 '&:hover': { backgroundColor: '#e6b43d' }
               }}
             >
-              
+
               {loading ? 'Entering Hive...' : 'Sign In'}
             </Button>
           </Stack>

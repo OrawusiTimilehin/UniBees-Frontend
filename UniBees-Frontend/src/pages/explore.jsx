@@ -14,15 +14,12 @@ import {
   Waves as WavesIcon
 } from '@mui/icons-material';
 
-/**
- * APOLLO CLIENT IMPORTS
- * Split imports ensure resolution in the preview environment.
- */
+
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useNavigate } from 'react-router-dom';
 
-// --- GRAPHQL OPERATIONS ---
+// GRAPHQL OPERATIONS 
 
 const GET_SWARMS = gql`
   query GetSwarms {
@@ -48,8 +45,7 @@ const CREATE_SWARM_MUTATION = gql`
   }
 `;
 
-// --- STYLED COMPONENTS ---
-
+// STYLED COMPONENTS 
 const PheromoneMeter = styled(LinearProgress, {
   shouldForwardProp: (prop) => prop !== 'energy'
 })(({ energy }) => ({
@@ -112,6 +108,7 @@ const Explore = () => {
     fetchPolicy: 'cache-and-network'
   });
 
+
   const [createSwarm, { loading: mutationLoading }] = useMutation(CREATE_SWARM_MUTATION, {
     refetchQueries: [{ query: GET_SWARMS }],
     onCompleted: () => handleClose(),
@@ -128,7 +125,7 @@ const Explore = () => {
   };
 
   /**
-   * IRONCLAD FILTER LOGIC
+   * FILTER LOGIC
    * Restoring null checks to prevent crashes when swarm data is incomplete.
    */
   const filteredSwarms = useMemo(() => {

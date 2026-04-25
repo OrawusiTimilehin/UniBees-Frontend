@@ -12,9 +12,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-/**
- * APOLLO CLIENT & SOCKET.IO
- */
+
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import io from 'socket.io-client';
@@ -111,7 +109,7 @@ const BeesMatch = () => {
   const quotaReached = (me?.swipesToday || 0) >= 5;
 
   /**
-   * --- THE REFINED HIVE ALGORITHM ---
+   *  THE REFINED HIVE ALGORITHM
    * Rules:
    * 1. Base Score: 30%
    * 2. Sector Sync (Majors): +20% boost
@@ -158,6 +156,7 @@ const BeesMatch = () => {
     }
     setMatchAlert(null);
   };
+
 
   if (loading) return <Box sx={{ p: 10, textAlign: 'center' }}><LinearProgress sx={{ color: '#FFC845' }} /></Box>;
 

@@ -16,9 +16,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
 
-/**
- * --- MODERN STYLED COMPONENTS ---
- */
 
 const GlassNavbar = styled(Box)(({ theme }) => ({
   position: 'fixed',
@@ -69,6 +66,7 @@ const AlgorithmBadge = styled(Box)(({ theme }) => ({
   marginBottom: '24px',
 }));
 
+
 const SwarmPulseMockup = styled(Box)(({ theme }) => ({
   width: '100%',
   maxWidth: '450px',
@@ -100,7 +98,7 @@ const LandingPage = () => {
 
   return (
     <Box sx={{ bgcolor: '#FFF', color: '#1A1A1B' }}>
-      {/* --- FLOATING NAV --- */}
+
       <GlassNavbar>
         <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -176,7 +174,6 @@ const LandingPage = () => {
                     </Box>
                   </Box>
                   
-                  {/* Mock Swarm Card 1 */}
                   <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4 }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                        <Box sx={{ width: 40, height: 40, bgcolor: '#FFC845', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -189,7 +186,6 @@ const LandingPage = () => {
                     </Stack>
                   </Paper>
 
-                  {/* Mock Swarm Card 2 */}
                   <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 4, opacity: 0.8 }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                        <Box sx={{ width: 40, height: 40, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -218,7 +214,6 @@ const LandingPage = () => {
         </Container>
       </HeroWrapper>
 
-      {/* --- THE PHILOSOPHY SECTION --- */}
       <Box sx={{ py: 20, bgcolor: '#000', color: '#FFF' }}>
         <Container maxWidth="lg">
           <Grid container spacing={10} alignItems="center">
@@ -253,7 +248,6 @@ const LandingPage = () => {
         </Container>
       </Box>
 
-      {/* --- THE FEATURES GRID --- */}
       <Container maxWidth="lg" sx={{ py: 15 }}>
         <Box sx={{ textAlign: 'center', mb: 12 }}>
           <Typography variant="h2" sx={{ fontWeight: 900, letterSpacing: -2 }}>Three Pillars of the Hive</Typography>
@@ -298,7 +292,6 @@ const LandingPage = () => {
         </Grid>
       </Container>
 
-      {/* --- CALL TO ACTION --- */}
       <Box sx={{ py: 15, textAlign: 'center', position: 'relative' }}>
         <Container maxWidth="md">
           <Paper elevation={0} sx={{ 
@@ -331,7 +324,6 @@ const LandingPage = () => {
         </Container>
       </Box>
 
-      {/* --- FOOTER --- */}
       <Box sx={{ py: 8, textAlign: 'center', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
         <Typography variant="body2" color="text.secondary" fontWeight={700}>
           © 2026 UNIBEES • BUILT FOR THE COLLECTIVE • STIGMERGIC DISCOVERY PROTOCOL
