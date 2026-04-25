@@ -5,7 +5,10 @@ import {
   Navigate 
 } from 'react-router-dom';
 
-
+/**
+ * APOLLO CLIENT IMPORTS
+ * Updated: ApolloProvider moved to @apollo/client/react to resolve specific resolution errors.
+ */
 import {
   ApolloClient,
   InMemoryCache,
@@ -15,7 +18,6 @@ import {
 import { ApolloProvider } from "@apollo/client/react";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
-
 
 import SignUp from './pages/signup';
 import Login from './pages/login';
@@ -30,6 +32,18 @@ import PublicProfile from './pages/publicProfile';
 import PrivateChat from './pages/privateChatroom';
 import LandingPage from './pages/landingPage';
 
+
+const getApiUrl = () => {
+  try {
+    const envUrl = import.meta.env.VITE_API_URL;
+    return envUrl || 'http://localhost:8000';
+  } catch (e) {
+    return 'http://localhost:8000';
+  }
+};
+
+const API_URL = getApiUrl();
+
 // THE SESSION WATCHER 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
@@ -37,7 +51,6 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
       if (err.message === "Not authenticated" || err.message === "Invalid hive credentials") {
         console.warn("🐝 Hive Session Expired. Clearing keys...");
         localStorage.removeItem('token');
-        // Force hard redirect to the login page to ensure a clean state
         window.location.href = "/login";
       }
     }
@@ -48,14 +61,11 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   }
 });
 
-// Connection to Python backend 
 const httpLink = createHttpLink({
-  uri: 'http://localhost:8000/graphql',
+  uri: `${API_URL}/graphql`,
 });
 
-
-//  THE AUTH LINK
-
+// THE AUTH LINK
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('token');
   return {
@@ -65,7 +75,6 @@ const authLink = setContext((_, { headers }) => {
     }
   };
 });
-
 
 const client = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
@@ -127,9 +136,7 @@ const App = () => {
           />
 
           {/* Navigation Redirects */}
-  
           <Route path="*" element={<Navigate to="/" replace />} />
-
         </Routes>
       </LayoutWrapper>
     </ApolloProvider>

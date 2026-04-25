@@ -66,6 +66,7 @@ const SwarmChats = () => {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [toast, setToast] = useState({ open: false, message: '' });
+  const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   // Menu State
   const [anchorEl, setAnchorEl] = useState(null);
@@ -85,7 +86,7 @@ const SwarmChats = () => {
     // Wait for my user data before connecting to ensure identification works
     if (!data?.me?.id) return;
 
-    const newSocket = io('http://localhost:8000');
+    const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
     // Join the swarm room for group chat

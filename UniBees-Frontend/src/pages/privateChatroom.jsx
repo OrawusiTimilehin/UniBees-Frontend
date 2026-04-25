@@ -52,6 +52,7 @@ const PrivateChat = () => {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [intensity, setIntensity] = useState(40);
+  const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const { data, loading } = useQuery(GET_PRIVATE_CHAT_DATA, { 
     variables: { otherUserId: userId },
@@ -62,11 +63,12 @@ const PrivateChat = () => {
     if (data?.getPrivateMessages) setMessages(data.getPrivateMessages);
   }, [data]);
 
+
   // LIVE ENGINE 
   useEffect(() => {
     if (!data?.me?.id) return;
 
-    const newSocket = io('http://localhost:8000', { 
+    const newSocket = io(SOCKET_URL, { 
         transports: ['websocket'],
         reconnection: true 
     });
