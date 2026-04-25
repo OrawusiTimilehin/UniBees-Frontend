@@ -7,18 +7,19 @@ import {
   Close as CloseIcon, 
   Favorite as FavoriteIcon, 
   Groups as GroupsIcon,
-  LocalFlorist as FlowerIcon,
   LockClock as LockIcon,
-  ElectricBolt as PulseIcon,
   EmojiEvents as MatchIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * APOLLO CLIENT & SOCKET.IO
  */
-import { useQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import io from 'socket.io-client';
+
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const DISCOVER_BEES = gql`
   query DiscoverBees {
@@ -27,6 +28,7 @@ const DISCOVER_BEES = gql`
       interests
       participatedSwarms
       swipesToday
+      major
     }
     discoverBees {
       id
@@ -40,7 +42,7 @@ const DISCOVER_BEES = gql`
   }
 `;
 
-// --- STYLED COMPONENTS ---
+// --- STYLED COMPONENTS (PRESERVED EXACTLY) ---
 
 const DiscoveryCard = styled(Paper)(({ theme }) => ({
   borderRadius: '32px',
@@ -74,6 +76,7 @@ const HexagonAvatar = styled(Box)({
 });
 
 const BeesMatch = () => {
+  const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [socket, setSocket] = useState(null);
@@ -83,7 +86,7 @@ const BeesMatch = () => {
 
   useEffect(() => {
     if (!data?.me?.id) return;
-    const newSocket = io('http://localhost:8000');
+    const newSocket = io(SOCKET_URL, { transports: ['websocket'] });
     setSocket(newSocket);
     newSocket.emit('identify_bee', { user_id: data.me.id });
 
@@ -95,13 +98,8 @@ const BeesMatch = () => {
       setTimeout(() => {
         setIndex(prev => prev + 1);
         setIsAnimating(false);
-        refetch(); // Refresh swipesToday
+        refetch();
       }, 300);
-    });
-
-    newSocket.on('swipe_error', (err) => {
-      alert(err.message);
-      setIsAnimating(false);
     });
 
     return () => newSocket.close();
@@ -113,24 +111,29 @@ const BeesMatch = () => {
   const quotaReached = (me?.swipesToday || 0) >= 5;
 
   /**
-   * HIVE REINFORCEMENT ALGORITHM (Frontend Simulation)
-   * 1. Check shared personal tags (interests).
-   * 2. Check shared swarm activity (participatedSwarms).
+   * --- THE REFINED HIVE ALGORITHM ---
+   * Rules:
+   * 1. Base Score: 30%
+   * 2. Sector Sync (Majors): +20% boost
+   * 3. Stigmergic Weight (Shared Swarms): +15% per swarm
+   * 4. Pollen Match (Interests): +5% per interest
    */
   const matchStats = useMemo(() => {
-    if (!me || !currentBee) return { score: 0, commonSwarms: 0 };
+    if (!me || !currentBee) return { score: 0, commonSwarms: 0, commonInterests: 0 };
     
+    // Calculate shared interests
     const myInterests = new Set(me.interests || []);
-    const theirInterests = currentBee.interests || [];
-    const sharedInterests = theirInterests.filter(i => myInterests.has(i)).length;
+    const sharedInterests = (currentBee.interests || []).filter(i => myInterests.has(i)).length;
 
+    // Calculate shared swarms
     const mySwarms = new Set(me.participatedSwarms || []);
-    const theirSwarms = currentBee.participatedSwarms || [];
-    const sharedSwarms = theirSwarms.filter(s => mySwarms.has(s)).length;
+    const sharedSwarms = (currentBee.participatedSwarms || []).filter(s => mySwarms.has(s)).length;
 
-    // Calculation: Base 50 + (Interests * 10) + (Swarm Overlap * 20)
-    // Hive Reinforcement weight is higher (20) than tags (10)
-    const score = 50 + (sharedInterests * 10) + (sharedSwarms * 20);
+    // Sector Sync (Majors)
+    const sectorSync = me.major === currentBee.major ? 20 : 0;
+
+    // Calculation with lower base
+    const score = 30 + (sharedInterests * 5) + (sharedSwarms * 15) + sectorSync;
     
     return {
       score: Math.min(99, score),
@@ -147,6 +150,13 @@ const BeesMatch = () => {
       target_id: currentBee.id,
       action
     });
+  };
+
+  const handleStartBuzzing = () => {
+    if (matchAlert?.partner_id) {
+      navigate(`/chat/${matchAlert.partner_id}`);
+    }
+    setMatchAlert(null);
   };
 
   if (loading) return <Box sx={{ p: 10, textAlign: 'center' }}><LinearProgress sx={{ color: '#FFC845' }} /></Box>;
@@ -169,9 +179,8 @@ const BeesMatch = () => {
               <LockIcon sx={{ fontSize: 60, color: '#FFC845', mb: 2 }} />
               <Typography variant="h5" fontWeight={900}>Hive Resting</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 4 }}>
-                You have analyzed 5 bees today. This limit ensures high-quality pollen matches and avoids hive burnout.
+                You have analyzed 5 bees today. This limit ensures high-quality matches and avoids hive burnout.
               </Typography>
-              <Button fullWidth variant="outlined" sx={{ borderRadius: 3, fontWeight: 900, color: '#FFC845', borderColor: '#FFC845' }}>View Connections</Button>
             </Paper>
           </Fade>
         ) : currentBee ? (
@@ -211,14 +220,14 @@ const BeesMatch = () => {
                 </Stack>
 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
-                  {currentBee.interests.map(i => (
+                  {currentBee.interests?.map(i => (
                     <Chip 
                       key={i} label={i} size="small" 
-                      variant={me.interests.includes(i) ? "filled" : "outlined"}
+                      variant={me?.interests?.includes(i) ? "filled" : "outlined"}
                       sx={{ 
                         fontWeight: 700, fontSize: '0.7rem',
-                        bgcolor: me.interests.includes(i) ? alpha('#FFC845', 0.2) : 'transparent',
-                        color: me.interests.includes(i) ? '#000' : 'text.secondary'
+                        bgcolor: me?.interests?.includes(i) ? alpha('#FFC845', 0.2) : 'transparent',
+                        color: me?.interests?.includes(i) ? '#000' : 'text.secondary'
                       }} 
                     />
                   ))}
@@ -226,16 +235,10 @@ const BeesMatch = () => {
               </DiscoveryCard>
 
               <Stack direction="row" spacing={6} justifyContent="center" sx={{ mt: 5 }}>
-                <IconButton 
-                  onClick={() => handleSwipe('PASS')}
-                  sx={{ width: 72, height: 72, bgcolor: '#FFF', border: '1px solid #EEE', '&:hover': { bgcolor: '#F5F5F5' } }}
-                >
+                <IconButton onClick={() => handleSwipe('PASS')} sx={{ width: 72, height: 72, bgcolor: '#FFF', border: '1px solid #EEE' }}>
                   <CloseIcon sx={{ fontSize: 36, color: '#999' }} />
                 </IconButton>
-                <IconButton 
-                  onClick={() => handleSwipe('LIKE')}
-                  sx={{ width: 72, height: 72, bgcolor: '#FFC845', color: '#000', boxShadow: '0 8px 25px rgba(255, 200, 69, 0.4)', '&:hover': { bgcolor: '#f2be41' } }}
-                >
+                <IconButton onClick={() => handleSwipe('LIKE')} sx={{ width: 72, height: 72, bgcolor: '#FFC845', color: '#000', boxShadow: '0 8px 25px rgba(255, 200, 69, 0.4)' }}>
                   <FavoriteIcon sx={{ fontSize: 36 }} />
                 </IconButton>
               </Stack>
@@ -245,7 +248,7 @@ const BeesMatch = () => {
           <Box sx={{ textAlign: 'center', mt: 10 }}>
             <GroupsIcon sx={{ fontSize: 60, opacity: 0.1, mb: 2 }} />
             <Typography variant="h6" color="text.secondary" fontWeight={900}>Scanning Sector...</Typography>
-            <Typography variant="body2" color="text.secondary">No more bees nearby right now. Refill your pollen bag!</Typography>
+            <Typography variant="body2" color="text.secondary">No more bees nearby right now.</Typography>
           </Box>
         )}
       </Container>
@@ -267,13 +270,14 @@ const BeesMatch = () => {
               <Button 
                 variant="contained" 
                 size="large" 
-                onClick={() => navigate(`/chat/${matchAlert.partner_id}`)}
-                sx={{ bgcolor: '#FFC845', color: '#000', px: 6, py: 2, borderRadius: 4, fontWeight: 900, fontSize: '1.1rem' }}
+                onClick={handleStartBuzzing} 
+                sx={{ bgcolor: '#FFC845', color: '#000', px: 6, py: 2, borderRadius: 4, fontWeight: 900 }}
               >
                 Start Buzzing
               </Button>
               <Button 
-                fullWidth sx={{ mt: 2, color: '#FFF' }}
+                fullWidth 
+                sx={{ mt: 2, color: '#FFF', fontWeight: 700 }}
                 onClick={() => setMatchAlert(null)}
               >
                 Keep Exploring
