@@ -5,11 +5,7 @@ import {
   Navigate 
 } from 'react-router-dom';
 
-/**
- * APOLLO CLIENT & AUTH HANDSHAKE
- * Standardized imports to solve "Could not resolve" errors.
- * In Apollo 3.x+, most components are available directly from "@apollo/client".
- */
+
 import {
   ApolloClient,
   InMemoryCache,
@@ -20,12 +16,7 @@ import { ApolloProvider } from "@apollo/client/react";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 
-/**
- * LOCAL PAGE & COMPONENT IMPORTS
- * Note: These errors in the preview occur because the Canvas environment 
- * cannot "see" your local folder structure. This code is correct for your 
- * local VS Code / IDE environment.
- */
+
 import SignUp from './pages/signup';
 import Login from './pages/login';
 import Profile from './pages/profile';
@@ -38,13 +29,8 @@ import SwarmChat from './pages/swarmChats';
 import PublicProfile from './pages/publicProfile';
 import PrivateChat from './pages/privateChatroom';
 import LandingPage from './pages/landingPage';
-/**
- * 1. THE SESSION WATCHER (The "Disappearing Swarm" Fix)
- * This watches for any "Not authenticated" response from the backend.
- * Even if your token is set for 30 days, if the backend rejects it 
- * (e.g., due to a server restart or secret change), this logic 
- * will instantly clear the dead token and force a fresh login.
- */
+
+// THE SESSION WATCHER 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
     for (let err of graphQLErrors) {
@@ -62,15 +48,14 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   }
 });
 
-// 2. Connection to your Python backend (Port 8000)
+// Connection to Python backend 
 const httpLink = createHttpLink({
   uri: 'http://localhost:8000/graphql',
 });
 
-/**
- * 3. THE AUTH LINK
- * Attaches your token to every request.
- */
+
+//  THE AUTH LINK
+
 const authLink = setContext((_, { headers }) => {
   const token = localStorage.getItem('token');
   return {
@@ -81,10 +66,7 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
-/**
- * 4. Initialize the Client
- * Chaining: ErrorLink -> AuthLink -> HttpLink
- */
+
 const client = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),

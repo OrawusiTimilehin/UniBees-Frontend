@@ -13,6 +13,7 @@ import {
 import { VerifiedUserOutlined as ShieldIcon } from '@mui/icons-material';
 
 
+
 const Verification = () => {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
@@ -22,6 +23,7 @@ const Verification = () => {
   const logoPath = "/src/assets/logo.png";
 
   
+
   const handleChange = (index, value) => {
     if (isNaN(value)) return; 
     const newCode = [...code];
@@ -106,7 +108,7 @@ const Verification = () => {
 
 
 
-          {/* 6-Digit Input Row */}
+          {/* 6 digit Input Row */}
           <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 4 }}>
             {code.map((digit, index) => (
               <TextField
