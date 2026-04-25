@@ -18,12 +18,12 @@ const LayoutWrapper = ({ children }) => {
       <Box 
         component="main" 
         sx={{ 
-          // 1. Padding Top: Prevents the Top Header from blocking content
+          // Padding Top: Prevents the Top Header from blocking content
           pt: shouldHideNav ? 0 : '0px', 
           
-          // 2. Padding Bottom: Prevents page content from being hidden
+          // Padding Bottom: Prevents page content from being hidden
           // Note: This only affects static content. 
-          // For FIXED buttons in BeesMatch, change their 'bottom' to 120px.
+
           pb: shouldHideNav ? 0 : '120px',
           
           px: 2 

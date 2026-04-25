@@ -16,10 +16,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
-/**
- * APOLLO CLIENT & SOCKET.IO
- * Split imports are used to resolve module resolution issues in this environment.
- */
+
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import io from 'socket.io-client';
@@ -93,7 +90,6 @@ const Navbar = () => {
   const [localNotifs, setLocalNotifs] = useState([]); 
   const open = Boolean(anchorEl);
 
-  // Fetch with network-only to ensure persistence is checked from DB on reload
   const { data, refetch } = useQuery(GET_NAVBAR_DATA, {
     fetchPolicy: 'network-only', 
     nextFetchPolicy: 'cache-first'
@@ -117,7 +113,6 @@ const Navbar = () => {
     // Immediate removal from UI
     setLocalNotifs(prev => prev.filter(n => n.id !== notifId));
     
-    // If it's a real ID (not temp), attempt DB deletion
     if (!notifId.toString().startsWith('temp-')) {
       deleteNotif({ variables: { id: notifId } }).catch(() => {
         // Fallback already handled by onCompleted/onError
@@ -135,7 +130,7 @@ const Navbar = () => {
     });
 
     socket.on('new_notification', (notif) => {
-      console.log("🐝 Socket Data Incoming:", notif);
+      console.log(" Socket Data Incoming:", notif);
       setLocalNotifs(prev => {
         // Use real ID if socket provides it, otherwise generate temp
         const id = notif.id || notif._id || `temp-${Date.now()}`;
