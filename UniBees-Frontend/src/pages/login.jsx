@@ -24,10 +24,7 @@ import { gql } from '@apollo/client';
 import { useMutation} from '@apollo/client/react';
 import { useNavigate, Link } from 'react-router-dom';
 
-/**
- * LOGIN_MUTATION
- * Ensure this matches the definition in your src/graphql/operations.js
- */
+
 const LOGIN_MUTATION = gql`
   mutation Login($email: String!, $password: String!) {
     login(email: $email, password: $password) {
@@ -56,14 +53,14 @@ const Login = () => {
   // Apollo Mutation Hook
   const [loginUser, { loading }] = useMutation(LOGIN_MUTATION, {
     onCompleted: (data) => {
-      // 1. Store the Digital ID (JWT)
+      //  Store the Digital ID (JWT)
       localStorage.setItem('token', data.login.token);
       
-      // 2. Fly to the matching page
+      // Fly to the matching page
       navigate('/explore');
     },
     onError: (error) => {
-      // Catch specific hive errors (e.g., "Invalid credentials")
+      // Catch specific hive errors
       setErrorMsg(error.message);
     }
   });
@@ -202,6 +199,7 @@ const Login = () => {
                 '&:hover': { backgroundColor: '#e6b43d' }
               }}
             >
+              
               {loading ? 'Entering Hive...' : 'Sign In'}
             </Button>
           </Stack>

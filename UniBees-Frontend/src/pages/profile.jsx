@@ -17,16 +17,12 @@ import {
 import GroupsIcon from '@mui/icons-material/Groups';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
- /* APOLLO CLIENT IMPORTS
- * Strictly following the split import structure to resolve bundler issues:
- * - Hooks from @apollo/client/react
- * - gql from @apollo/client
- */
+
 import { useQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 import { useNavigate, Navigate } from 'react-router-dom';
 
-// --- GRAPHQL OPERATIONS ---
+// GRAPHQL OPERATIONS 
 
 const GET_ME = gql`
   query GetMe {
@@ -76,7 +72,7 @@ const UPDATE_IMAGE = gql`
   }
 `;
 
-// --- STYLED COMPONENTS ---
+//  STYLED COMPONENTS 
 
 const hexagonClip = 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)';
 
@@ -150,7 +146,7 @@ const Profile = () => {
   const [showPass, setShowPass] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
-  // 1. Fetch User Data
+  //  Fetch User Data
   const { data, loading, error } = useQuery(GET_ME, {
     fetchPolicy: 'network-only',
     onCompleted: (data) => {
@@ -433,6 +429,7 @@ const Profile = () => {
             </Button>
           </Paper>
 
+
           {/* Security Section */}
           <Paper elevation={0} sx={{ p: 4, borderRadius: 8, border: '1px solid rgba(0,0,0,0.05)' }}>
             <Typography variant="overline" sx={{ fontWeight: 900, color: 'text.secondary', letterSpacing: 1.5, display: 'block', mb: 2 }}>
@@ -460,6 +457,7 @@ const Profile = () => {
                   )
                 }}
               />
+
               <Button 
                 variant="contained" 
                 fullWidth 
@@ -491,6 +489,7 @@ const Profile = () => {
         </Stack>
       </Container>
       
+
       <Snackbar 
         open={toast.open} 
         autoHideDuration={3000} 

@@ -3,11 +3,13 @@ import {
   Box, Container, Typography, IconButton, Avatar, Paper, 
   Chip, Stack, styled, Button, CircularProgress 
 } from '@mui/material';
+
 import { 
   ArrowBack as BackIcon, 
   PersonAdd as PersonAddIcon,
   Groups as GroupsIcon 
 } from '@mui/icons-material';
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { gql} from '@apollo/client';
 import { useQuery } from '@apollo/client/react';

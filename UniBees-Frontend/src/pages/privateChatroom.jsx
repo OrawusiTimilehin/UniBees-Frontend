@@ -14,7 +14,7 @@ import { gql} from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import io from 'socket.io-client';
 
-// --- GRAPHQL ---
+// GRAPHQL 
 const GET_PRIVATE_CHAT_DATA = gql`
   query GetPrivateChatData($otherUserId: String!) {
     getUser(id: $otherUserId) {
@@ -29,7 +29,7 @@ const GET_PRIVATE_CHAT_DATA = gql`
   }
 `;
 
-// --- STYLED ---
+//  STYLED 
 const MessageBubble = styled(Box, {
   shouldForwardProp: (prop) => prop !== 'isMe'
 })(({ isMe }) => ({
@@ -62,7 +62,7 @@ const PrivateChat = () => {
     if (data?.getPrivateMessages) setMessages(data.getPrivateMessages);
   }, [data]);
 
-  // --- LIVE ENGINE ---
+  // LIVE ENGINE 
   useEffect(() => {
     if (!data?.me?.id) return;
 
@@ -73,7 +73,7 @@ const PrivateChat = () => {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      console.log("🟢 Hive Connected");
+      console.log("Hive Connected");
       // CRITICAL: Must identify so the backend knows which room we belong to
       newSocket.emit('identify_bee', { user_id: data.me.id });
     });
@@ -82,13 +82,11 @@ const PrivateChat = () => {
       const sId = msg.sender_id || msg.senderId;
       const rId = msg.recipient_id || msg.recipientId;
 
-      // Logic: Is this message actually for this specific chat window?
       const isRelevant = (sId === userId && rId === data.me.id) || 
                          (sId === data.me.id && rId === userId);
 
       if (isRelevant) {
         setMessages(prev => {
-          // Deduplication: Don't add if it already exists (prevents double bubbles)
           const exists = prev.some(m => (m.id === msg.id) || (m.timestamp === msg.timestamp && m.text === msg.text));
           if (exists) return prev;
           
@@ -121,7 +119,6 @@ const PrivateChat = () => {
 
     socket.emit('send_private_message', payload);
     
-    // Optimistic UI: Add your message immediately
     setMessages(prev => [...prev, {
       id: `temp-${Date.now()}`,
       text: inputText,

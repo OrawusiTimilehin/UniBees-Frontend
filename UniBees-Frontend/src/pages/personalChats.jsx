@@ -14,9 +14,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import GroupsIcon from '@mui/icons-material/Groups';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-/**
- * APOLLO CLIENT IMPORTS
- */
+
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 
@@ -71,14 +69,14 @@ const PersonalChats = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. Fetch Friends from the Database
+  // Fetch Friends from the Database
   const { data, loading, error } = useQuery(GET_PRIVATE_CHATS, {
     fetchPolicy: 'cache-and-network'
   });
 
   const friends = data?.myFriends || [];
 
-  // 2. Filter local list based on search
+  // Filter local list based on search
   const filteredFriends = friends.filter(f => 
     f.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -128,7 +126,6 @@ const PersonalChats = () => {
         }}
       />
 
-      {/* Swarm Requests Prompt (Small Banner) */}
       <Paper 
         elevation={0} 
         sx={{ 
