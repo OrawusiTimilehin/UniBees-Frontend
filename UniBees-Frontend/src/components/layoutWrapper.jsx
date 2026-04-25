@@ -7,7 +7,7 @@ const LayoutWrapper = ({ children }) => {
   const location = useLocation();
   
   // Define which paths should NOT show the navbars
-  const hideNavPaths = ['/login', '/signup'];
+  const hideNavPaths = ['/login', '/signup', '/']; 
   const shouldHideNav = hideNavPaths.includes(location.pathname);
 
   return (
