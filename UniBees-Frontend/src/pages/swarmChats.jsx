@@ -16,15 +16,12 @@ import {
 } from '@mui/icons-material';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-/**
- * APOLLO CLIENT IMPORTS
- * Split imports are used here to resolve specific environment resolution issues.
- */
+
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import io from 'socket.io-client';
 
-// --- GRAPHQL ---
+// GRAPHQL 
 const GET_CHAT_DATA = gql`
   query GetChatData($id: String!) {
     getSwarm(id: $id) {
@@ -49,7 +46,7 @@ const GET_CHAT_DATA = gql`
   }
 `;
 
-// --- STYLED COMPONENTS ---
+// STYLED COMPONENTS 
 const MessageBubble = styled(Box)(({ isMe }) => ({
   maxWidth: '75%',
   padding: '12px 20px',
@@ -91,10 +88,10 @@ const SwarmChats = () => {
     const newSocket = io('http://localhost:8000');
     setSocket(newSocket);
 
-    // 1. Join the swarm room for group chat
+    // Join the swarm room for group chat
     newSocket.emit('join_swarm', { swarm_id: id });
 
-    // 2. Identify so this page can also receive notifications
+    // Identify so this page can also receive notifications
     newSocket.emit('identify_bee', { user_id: data.me.id });
     
     newSocket.on('receive_message', (msg) => {

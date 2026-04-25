@@ -13,18 +13,11 @@ import {
 import { ArrowForward as ArrowIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-/**
- * APOLLO CLIENT IMPORTS
- * Updated to use the standard package path to resolve the environment resolution error.
- */
+
 import { gql} from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
 
-/**
- * LOCAL MUTATION DEFINITIONS
- * These are defined here to ensure the "major" variable and the String return type
- * match your specific backend implementation perfectly.
- */
+
 const SIGNUP_MUTATION = gql`
   mutation Signup($username: String!, $email: String!, $password: String!, $name: String!, $major: String!) {
     signup(username: $username, email: $email, password: $password, name: $name, major: $major)
@@ -46,7 +39,6 @@ const VERIFY_OTP_MUTATION = gql`
 const SignUp = () => {
   const navigate = useNavigate();
   
-  // UI Flow State: 1 = Details, 2 = OTP Entry
   const [step, setStep] = useState(1);
 
   // Form State
@@ -59,7 +51,6 @@ const SignUp = () => {
   const [otp, setOtp] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 1. Initial Signup Mutation
   const [signupUser, { loading: signupLoading }] = useMutation(SIGNUP_MUTATION, {
     onCompleted: (data) => {
       if (data.signup === "OTP_SENT") {
@@ -69,7 +60,7 @@ const SignUp = () => {
     onError: (error) => setErrorMsg(error.message)
   });
 
-  // 2. OTP Verification Mutation
+  //  OTP Verification Mutation
   const [verifyOtp, { loading: verifyLoading }] = useMutation(VERIFY_OTP_MUTATION, {
     onCompleted: (data) => {
       localStorage.setItem('token', data.verifyOtp.token);
@@ -163,7 +154,6 @@ const SignUp = () => {
               <TextField fullWidth required label="Username" value={username} onChange={(e) => setUsername(e.target.value)} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }} />
               <TextField fullWidth required type="email" label="University Email" value={email} onChange={(e) => setEmail(e.target.value)} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }} />
               
-              {/* MAJOR FIELD: Added to resolve the "Variable $major not provided" error */}
               <TextField 
                 fullWidth required label="Course / Major" value={major} 
                 onChange={(e) => setMajor(e.target.value)} 

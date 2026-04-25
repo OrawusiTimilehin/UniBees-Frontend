@@ -18,13 +18,11 @@ export const GET_ME_QUERY = gql`
 
 // --- MUTATIONS ---
 export const SIGNUP_MUTATION = gql`
-  mutation Signup($username: String!, $email: String!, $password: String!, $name: String!) {
-    signup(username: $username, email: $email, password: $password, name: $name) {
-      token
-      user { id username rank }
-    }
+  mutation Signup($username: String!, $email: String!, $password: String!, $name: String!, $major: String!) {
+    signup(username: $username, email: $email, password: $password, name: $name, major: $major)
   }
 `;
+
 
 export const LOGIN_MUTATION = gql`
   mutation Login($email: String!, $password: String!) {

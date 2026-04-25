@@ -14,10 +14,7 @@ import {
   CloudUpload as UploadIcon
 } from '@mui/icons-material';
 
-/**
- * APOLLO CLIENT IMPORTS
- * Splitting imports to ensure compatibility with the preview environment's bundler.
- */
+
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 
@@ -45,7 +42,7 @@ const UPDATE_SWARM = gql`
   }
 `;
 
-// --- STYLED COMPONENTS ---
+// STYLED COMPONENTS
 
 const UploadBox = styled(Box)(({ theme, image }) => ({
   width: '100%',
@@ -108,10 +105,7 @@ const ManageSwarms = () => {
     });
   };
 
-  /**
-   * FILE UPLOAD LOGIC
-   * Converts selected image to Base64 for DB storage
-   */
+ 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -224,6 +218,8 @@ const ManageSwarms = () => {
         </DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
+
+            
             
             {/* IMAGE UPLOAD UI */}
             <Box>
@@ -254,6 +250,7 @@ const ManageSwarms = () => {
               onChange={e => setEditForm({...editForm, description: e.target.value})}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
             />
+            
 
             <Box>
               <TextField 
@@ -297,10 +294,12 @@ const ManageSwarms = () => {
             </Box>
           </Stack>
         </DialogContent>
+
         <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
           <Button onClick={() => setEditingSwarm(null)} sx={{ color: 'text.secondary', fontWeight: 800 }}>
             CANCEL
           </Button>
+
           <Button 
             variant="contained" 
             disabled={saving}
